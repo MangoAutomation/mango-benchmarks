@@ -8,13 +8,13 @@ This module can be used to run benchmarks for Mango.
 Windows
 
 ```shell
-java -cp "maven-target\benchmarks-4.2.0-SNAPSHOT.jar;maven-target\dependency\*" com.infiniteautomation.mango.benchmarks.tsdb.Insert
+java -cp "maven-target\mango-benchmarks-4.3.0-SNAPSHOT.jar;maven-target\dependency\*" com.infiniteautomation.mango.benchmarks.tsdb.Insert
 ```
 
 Linux
 
 ```shell
-java -cp "maven-target/benchmarks-4.2.0-SNAPSHOT.jar:maven-target/dependency/*" com.infiniteautomation.mango.benchmarks.tsdb.Insert
+java -cp "maven-target/mango-benchmarks-4.3.0-SNAPSHOT.jar:maven-target/dependency/*" com.infiniteautomation.mango.benchmarks.tsdb.Insert
 ```
 
 ## Setting parameters and benchmark options
