@@ -32,14 +32,14 @@ import com.serotonin.m2m2.vo.DataPointVO;
 
 @Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 2, time = 60)
-@Measurement(iterations = 5, time = 60)
+@Warmup(iterations = 0, time = 60)
+@Measurement(iterations = 1, time = 60)
 @OutputTimeUnit(TimeUnit.SECONDS)
-public class Insert extends TsdbBenchmark {
+public class Read extends TsdbBenchmark {
 
     public static void main(String[] args) throws RunnerException, CommandLineOptionException {
         CommandLineOptions cmdOptions = new CommandLineOptions(args);
-        new Insert().runBenchmark(cmdOptions);
+        new Read().runBenchmark(cmdOptions);
     }
 
     @Test
@@ -48,43 +48,38 @@ public class Insert extends TsdbBenchmark {
     }
 
     @State(Scope.Thread)
-    public static class InsertState {
+    public static class ReadState {
 
+        final int valuesPerPoint = 10_000;
+        final int valuesPerRead = 10;
+        final int interval = 1000;
+        long readStart = 0;
+        long readEnd = readStart + valuesPerRead * interval;
         final Random random = new Random();
         List<DataPointVO> points;
-        int index = 0;
 
         @Setup
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
             this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
+            for (DataPointVO point : points) {
+                for (int i = 0; i < valuesPerPoint; i++) {
+                    mango.pvDao.savePointValueSync(point, new PointValueTime(random.nextDouble(), readStart + i * interval), null);
+                }
+            }
+            System.out.printf("Finished inserting %d values for %d points%n", valuesPerPoint, mango.points / mango.threads);
         }
 
-        public PointValueTime newValue(long timestamp) {
-            return new PointValueTime(random.nextDouble(), timestamp);
+        private void nextRead() {
+            this.readStart = readEnd;
+            this.readEnd = readStart + valuesPerRead * interval;
         }
     }
 
     @Benchmark
-    public void insert(TsdbMockMango mango, InsertState insertState, Blackhole blackhole) {
-        long timestamp = insertState.index * 5000L;
-        for (DataPointVO point : insertState.points) {
-            PointValueTime v = mango.pvDao.savePointValueSync(point, insertState.newValue(timestamp), null);
-            blackhole.consume(v);
-        }
-        insertState.index++;
-    }
-
-    @Benchmark
-    public void backdates(TsdbMockMango mango, InsertState insertState, Blackhole blackhole) {
-        long timestamp = insertState.index * 5000L;
-        // every 1000 iterations insert a backdated value
-        if (insertState.index % 1000 == 0) {
-            timestamp -= 1000 * 5000L;
-        }
-        for (DataPointVO point : insertState.points) {
-            PointValueTime v = mango.pvDao.savePointValueSync(point, insertState.newValue(timestamp), null);
-            blackhole.consume(v);
-        }
-        insertState.index++;
+    public void wideBookendQuery(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+        mango.pvDao.wideBookendQuery(readState.points, readState.readStart, readState.readEnd, false, null, (value, index) -> {
+            blackhole.consume(value);
+        });
+        readState.nextRead();
     }
 }
