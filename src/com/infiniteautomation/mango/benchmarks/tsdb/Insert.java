@@ -136,12 +136,15 @@ public class Insert {
         @Param({"1"})
         int points;
 
+        @Param({"-1"})
+        int maxOpenFiles;
+
         PointValueDao pvDao;
 
         @Override
         protected void preInitialize() {
             MockMangoProperties props = (MockMangoProperties) Common.envProps;
-            props.setProperty("db.nosql.maxOpenFiles", Integer.toString(points * 2));
+            props.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles >= 0 ? maxOpenFiles : points * 2));
 
             DatabaseProxyFactory delegate = new DefaultDatabaseProxyFactory();
             lifecycle.setDatabaseProxyFactory((type) -> {
