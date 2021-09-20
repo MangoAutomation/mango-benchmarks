@@ -32,8 +32,8 @@ import com.serotonin.m2m2.vo.DataPointVO;
 
 @Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 0, time = 60)
-@Measurement(iterations = 1, time = 60)
+@Warmup(iterations = 2, time = 60)
+@Measurement(iterations = 5, time = 60)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Read extends TsdbBenchmark {
 
