@@ -50,6 +50,11 @@ import com.serotonin.m2m2.db.dao.PointValueDao;
 import com.serotonin.m2m2.rt.dataImage.PointValueTime;
 import com.serotonin.m2m2.vo.DataPointVO;
 
+@Fork(value = 1, warmups = 0)
+@BenchmarkMode(Mode.Throughput)
+@Warmup(iterations = 2, time = 60)
+@Measurement(iterations = 5, time = 60)
+@OutputTimeUnit(TimeUnit.SECONDS)
 public class Insert {
     public static final String THREADS_PARAM = "threads";
     public static final String POINTS_PARAM = "points";
@@ -86,16 +91,18 @@ public class Insert {
 
         for (int threads : threadsParams) {
             for (int points : pointsParams) {
-                Options opts = new OptionsBuilder()
+                var builder = new OptionsBuilder()
                         .parent(options)
-                        .include(getClass().getName())
                         .threads(threads)
                         .operationsPerInvocation(points / threads)
                         .param(THREADS_PARAM, Integer.toString(threads))
-                        .param(POINTS_PARAM, Integer.toString(points))
-                        //.verbosity(VerboseMode.SILENT)
-                        .build();
+                        .param(POINTS_PARAM, Integer.toString(points));
 
+                if (options.getIncludes().isEmpty()) {
+                    builder.include(getClass().getName());
+                }
+
+                var opts = builder.build();
                 results.addAll(new Runner(opts).run());
             }
         }
@@ -181,30 +188,40 @@ public class Insert {
 
         final Random random = new Random();
         List<DataPointVO> points;
-        long timestamp = 0;
+        int index = 0;
 
         @Setup
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
             this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
         }
 
-        public PointValueTime newValue() {
+        public PointValueTime newValue(long timestamp) {
             return new PointValueTime(random.nextDouble(), timestamp);
         }
     }
 
     @Benchmark
-    @Fork(value = 1, warmups = 0)
-    @BenchmarkMode(Mode.Throughput)
-    @Warmup(iterations = 2, time = 60)
-    @Measurement(iterations = 5, time = 60)
-    @OutputTimeUnit(TimeUnit.SECONDS)
     public void insert(TsdbMockMango mango, PerThreadState perThreadState, Blackhole blackhole) {
+        long timestamp = perThreadState.index * 5000L;
         for (DataPointVO point : perThreadState.points) {
-            PointValueTime v = mango.pvDao.savePointValueSync(point, perThreadState.newValue(), null);
+            PointValueTime v = mango.pvDao.savePointValueSync(point, perThreadState.newValue(timestamp), null);
             blackhole.consume(v);
         }
-        perThreadState.timestamp += 1000;
+        perThreadState.index++;
+    }
+
+    @Benchmark
+    public void backdates(TsdbMockMango mango, PerThreadState perThreadState, Blackhole blackhole) {
+        long timestamp = perThreadState.index * 5000L;
+        // every 1000 iterations insert a backdated value
+        if (perThreadState.index % 1000 == 0) {
+            timestamp -= 1000 * 5000L;
+        }
+        for (DataPointVO point : perThreadState.points) {
+            PointValueTime v = mango.pvDao.savePointValueSync(point, perThreadState.newValue(timestamp), null);
+            blackhole.consume(v);
+        }
+        perThreadState.index++;
     }
 
 }
