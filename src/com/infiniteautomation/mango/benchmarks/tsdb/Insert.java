@@ -115,9 +115,13 @@ public class Insert {
     }
 
     private int parseCpuMultiplier(String param) {
-        if (param.endsWith("C")) {
-            float multiplier = Float.parseFloat(param.substring(0, param.length() - 1));
-            return (int) multiplier * NUM_CPU_CORES;
+        return parseMultiplier(param, "C", NUM_CPU_CORES);
+    }
+
+    private static int parseMultiplier(String param, String suffix, int multiplicand) {
+        if (param.endsWith(suffix)) {
+            float multiplier = Float.parseFloat(param.substring(0, param.length() - suffix.length()));
+            return (int) multiplier * multiplicand;
         }
         return Integer.parseInt(param);
     }
@@ -136,15 +140,16 @@ public class Insert {
         @Param({"1"})
         int points;
 
-        @Param({"-1"})
-        int maxOpenFiles;
+        @Param({"2X"})
+        String maxOpenFiles;
 
         PointValueDao pvDao;
 
         @Override
         protected void preInitialize() {
             MockMangoProperties props = (MockMangoProperties) Common.envProps;
-            props.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles >= 0 ? maxOpenFiles : points * 2));
+            int maxOpenFiles = parseMultiplier(this.maxOpenFiles, "X", points);
+            props.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
 
             DatabaseProxyFactory delegate = new DefaultDatabaseProxyFactory();
             lifecycle.setDatabaseProxyFactory((type) -> {

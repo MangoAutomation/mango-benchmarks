@@ -36,3 +36,4 @@ threads | 1C | number > 0 | Number of threads writing to TSDB, use "C" suffix to
 points | 1000 | number > 0 | Number of data points, use "C" suffix to multiply by number of CPU cores
 databaseType | h2 | h2, h2:mem, mysql | SQL database type
 implementation | sql, ias-tsdb | sql, ias-tsdb | PointValueDao implementation
+maxOpenFiles | 2X | number > 0 | IasTsdb max open files setting, use "X" suffix to multiply by number of points
