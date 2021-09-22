@@ -4,7 +4,6 @@
 
 package com.infiniteautomation.mango.benchmarks.tsdb;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -20,6 +19,9 @@ import org.openjdk.jmh.runner.format.OutputFormatFactory;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 
 import com.infiniteautomation.mango.benchmarks.MockMango;
 import com.serotonin.m2m2.Common;
@@ -29,7 +31,7 @@ import com.serotonin.m2m2.db.DatabaseProxyFactory;
 import com.serotonin.m2m2.db.DatabaseType;
 import com.serotonin.m2m2.db.DefaultDatabaseProxyFactory;
 import com.serotonin.m2m2.db.H2InMemoryDatabaseProxy;
-import com.serotonin.m2m2.db.NoSQLProxy;
+import com.serotonin.m2m2.db.PointValueDaoDefinition;
 import com.serotonin.m2m2.db.dao.PointValueDao;
 
 public abstract class TsdbBenchmark {
@@ -93,12 +95,21 @@ public abstract class TsdbBenchmark {
         return Integer.parseInt(param);
     }
 
+    public static class IasTsdbConfig {
+        @Primary
+        @Bean
+        public PointValueDao pointValueDao(BeanFactory beanFactory) {
+            PointValueDaoDefinition def = beanFactory.getBean("mangoPointValueDaoDefinition", PointValueDaoDefinition.class);
+            return def.getPointValueDao();
+        }
+    }
+
     public static class TsdbMockMango extends MockMango {
         //@Param({"h2:memory", "h2"})
         @Param({"h2"})
         String databaseType;
 
-        @Param({"sql", "ias-tsdb"})
+        @Param({"ias-tsdb"})
         String implementation;
 
         @Param({"1"})
@@ -123,6 +134,12 @@ public abstract class TsdbBenchmark {
             props.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
             props.setProperty("db.nosql.shardStreamType", shardStreamType);
 
+            if ("ias-tsdb".equals(implementation)) {
+                lifecycle.addRuntimeContextConfiguration(IasTsdbConfig.class);
+            } else if (!"sql".equals(implementation)) {
+                throw new UnsupportedOperationException();
+            }
+
             DatabaseProxyFactory delegate = new DefaultDatabaseProxyFactory();
             lifecycle.setDatabaseProxyFactory((type) -> {
                 // ignore type from properties
@@ -134,32 +151,13 @@ public abstract class TsdbBenchmark {
                     dbProxy = delegate.createDatabaseProxy(DatabaseType.valueOf(databaseType.toUpperCase()));
                 }
 
-                switch(implementation) {
-                    case "ias-tsdb": {
-                        try {
-                            Class<?> proxyClass = getClass().getClassLoader().loadClass("com.infiniteautomation.nosql.MangoNoSqlProxy");
-                            Constructor<?> constructor = proxyClass.getConstructor();
-                            NoSQLProxy tsdbProxy = (NoSQLProxy) constructor.newInstance();
-                            dbProxy.setNoSQLProxy(tsdbProxy);
-                        } catch (ReflectiveOperationException e) {
-                            throw new RuntimeException(e);
-                        }
-                        break;
-                    }
-                    case "sql": {
-                        // no-op, this is the default PointValueDao
-                        break;
-                    }
-                    default: throw new UnsupportedOperationException();
-                }
-
                 return dbProxy;
             });
         }
 
         @Setup
         public void setup() {
-            this.pvDao = Common.databaseProxy.newPointValueDao();
+            this.pvDao = Common.getBean(PointValueDao.class);
         }
     }
 
