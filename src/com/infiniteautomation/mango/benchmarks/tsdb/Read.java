@@ -30,7 +30,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import com.serotonin.m2m2.rt.dataImage.PointValueTime;
 import com.serotonin.m2m2.vo.DataPointVO;
 
-@Fork(value = 0, warmups = 0)
+@Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 2, time = 60)
 @Measurement(iterations = 5, time = 60)

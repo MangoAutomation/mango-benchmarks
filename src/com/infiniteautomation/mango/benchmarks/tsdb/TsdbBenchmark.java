@@ -19,7 +19,6 @@ import org.openjdk.jmh.runner.format.OutputFormatFactory;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
-import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
@@ -98,8 +97,11 @@ public abstract class TsdbBenchmark {
     public static class IasTsdbConfig {
         @Primary
         @Bean
-        public PointValueDao pointValueDao(BeanFactory beanFactory) {
-            PointValueDaoDefinition def = beanFactory.getBean("mangoPointValueDaoDefinition", PointValueDaoDefinition.class);
+        public PointValueDao pointValueDao(List<PointValueDaoDefinition> defs) {
+            PointValueDaoDefinition def = defs.stream()
+                    .filter(d -> d.getClass().getName().equals("com.infiniteautomation.nosql.MangoPointValueDaoDefinition"))
+                    .findFirst()
+                    .orElseThrow();
             return def.getPointValueDao();
         }
     }
@@ -133,6 +135,9 @@ public abstract class TsdbBenchmark {
             int maxOpenFiles = parseMultiplier(this.maxOpenFiles, "X", points);
             props.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
             props.setProperty("db.nosql.shardStreamType", shardStreamType);
+
+            // load the NoSQL module defs
+            loadModules();
 
             if ("ias-tsdb".equals(implementation)) {
                 lifecycle.addRuntimeContextConfiguration(IasTsdbConfig.class);
