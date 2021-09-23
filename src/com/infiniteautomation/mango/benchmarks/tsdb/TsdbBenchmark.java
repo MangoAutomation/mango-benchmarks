@@ -28,7 +28,6 @@ import com.serotonin.m2m2.MockMangoProperties;
 import com.serotonin.m2m2.db.DatabaseProxy;
 import com.serotonin.m2m2.db.DatabaseProxyFactory;
 import com.serotonin.m2m2.db.DatabaseType;
-import com.serotonin.m2m2.db.DefaultDatabaseProxyFactory;
 import com.serotonin.m2m2.db.H2InMemoryDatabaseProxy;
 import com.serotonin.m2m2.db.PointValueDaoDefinition;
 import com.serotonin.m2m2.db.dao.PointValueDao;
@@ -94,17 +93,6 @@ public abstract class TsdbBenchmark {
         return Integer.parseInt(param);
     }
 
-    public static class IasTsdbConfig {
-        @Primary
-        @Bean
-        public PointValueDao pointValueDao(List<PointValueDaoDefinition> defs) {
-            PointValueDaoDefinition def = defs.stream()
-                    .filter(d -> d.getClass().getName().equals("com.infiniteautomation.nosql.MangoPointValueDaoDefinition"))
-                    .findFirst()
-                    .orElseThrow();
-            return def.getPointValueDao();
-        }
-    }
 
     public static class TsdbMockMango extends MockMango {
         //@Param({"h2:memory", "h2"})
@@ -129,6 +117,37 @@ public abstract class TsdbBenchmark {
 
         PointValueDao pvDao;
 
+        public class BenchmarkConfig {
+            @Primary
+            @Bean
+            public PointValueDao pointValueDao(List<PointValueDaoDefinition> defs) {
+                var className = "com.serotonin.m2m2.module.definitions.db.DefaultPointValueDaoDefinition";
+                if ("ias-tsdb".equals(implementation)) {
+                    className = "com.infiniteautomation.nosql.MangoNoSqlPointValueDaoDefinition";
+                } else if (!"sql".equals(implementation)) {
+                    throw new UnsupportedOperationException();
+                }
+
+                final var classNameFinal = className;
+
+                PointValueDaoDefinition def = defs.stream()
+                        .filter(d -> d.getClass().getName().equals(classNameFinal))
+                        .findFirst()
+                        .orElseThrow();
+                return def.getPointValueDao();
+            }
+
+            @Bean
+            @Primary
+            public DatabaseProxy databaseProxy(DatabaseProxyFactory factory) {
+                if ("h2:memory".equals(databaseType)) {
+                    return new H2InMemoryDatabaseProxy();
+                } else {
+                    return factory.createDatabaseProxy(DatabaseType.valueOf(databaseType.toUpperCase()));
+                }
+            }
+        }
+
         @Override
         protected void preInitialize() {
             MockMangoProperties props = (MockMangoProperties) Common.envProps;
@@ -139,25 +158,7 @@ public abstract class TsdbBenchmark {
             // load the NoSQL module defs
             loadModules();
 
-            if ("ias-tsdb".equals(implementation)) {
-                lifecycle.addRuntimeContextConfiguration(IasTsdbConfig.class);
-            } else if (!"sql".equals(implementation)) {
-                throw new UnsupportedOperationException();
-            }
-
-            DatabaseProxyFactory delegate = new DefaultDatabaseProxyFactory();
-            lifecycle.setDatabaseProxyFactory((type) -> {
-                // ignore type from properties
-
-                DatabaseProxy dbProxy;
-                if ("h2:memory".equals(databaseType)) {
-                    dbProxy = new H2InMemoryDatabaseProxy();
-                } else {
-                    dbProxy = delegate.createDatabaseProxy(DatabaseType.valueOf(databaseType.toUpperCase()));
-                }
-
-                return dbProxy;
-            });
+            lifecycle.addRuntimeContextConfiguration(BenchmarkConfig.class);
         }
 
         @Setup
