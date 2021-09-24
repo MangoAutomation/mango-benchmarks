@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 import com.infiniteautomation.mango.benchmarks.MockMango;
+import com.infiniteautomation.mango.spring.DatabaseProxyConfiguration;
 import com.serotonin.m2m2.Common;
 import com.serotonin.m2m2.MockMangoProperties;
 import com.serotonin.m2m2.db.DatabaseProxy;
@@ -139,9 +140,9 @@ public abstract class TsdbBenchmark {
 
             @Bean
             @Primary
-            public DatabaseProxy databaseProxy(DatabaseProxyFactory factory) {
+            public DatabaseProxy databaseProxy(DatabaseProxyFactory factory, DatabaseProxyConfiguration configuration) {
                 if ("h2:memory".equals(databaseType)) {
-                    return new H2InMemoryDatabaseProxy();
+                    return new H2InMemoryDatabaseProxy(configuration);
                 } else {
                     return factory.createDatabaseProxy(DatabaseType.valueOf(databaseType.toUpperCase()));
                 }
