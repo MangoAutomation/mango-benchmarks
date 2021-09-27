@@ -19,6 +19,8 @@ import org.openjdk.jmh.runner.format.OutputFormatFactory;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
@@ -94,13 +96,43 @@ public abstract class TsdbBenchmark {
         return Integer.parseInt(param);
     }
 
+    public static class BenchmarkConfig {
+        @Primary
+        @Bean
+        public PointValueDao pointValueDao(TsdbMockMango mango, List<PointValueDaoDefinition> defs) {
+            var className = "com.serotonin.m2m2.module.definitions.db.DefaultPointValueDaoDefinition";
+            if ("ias-tsdb".equals(mango.implementation)) {
+                className = "com.infiniteautomation.nosql.MangoNoSqlPointValueDaoDefinition";
+            } else if (!"sql".equals(mango.implementation)) {
+                throw new UnsupportedOperationException();
+            }
+
+            final var classNameFinal = className;
+
+            PointValueDaoDefinition def = defs.stream()
+                    .filter(d -> d.getClass().getName().equals(classNameFinal))
+                    .findFirst()
+                    .orElseThrow();
+            return def.getPointValueDao();
+        }
+
+        @Bean
+        @Primary
+        public DatabaseProxy databaseProxy(TsdbMockMango mango, DatabaseProxyFactory factory, DatabaseProxyConfiguration configuration) {
+            if ("h2:memory".equals(mango.databaseType)) {
+                return new H2InMemoryDatabaseProxy(configuration);
+            } else {
+                return factory.createDatabaseProxy(DatabaseType.valueOf(mango.databaseType.toUpperCase()));
+            }
+        }
+    }
 
     public static class TsdbMockMango extends MockMango {
         //@Param({"h2:memory", "h2"})
         @Param({"h2"})
         String databaseType;
 
-        @Param({"ias-tsdb"})
+        @Param({"ias-tsdb", "sql"})
         String implementation;
 
         @Param({"1"})
@@ -118,37 +150,6 @@ public abstract class TsdbBenchmark {
 
         PointValueDao pvDao;
 
-        public class BenchmarkConfig {
-            @Primary
-            @Bean
-            public PointValueDao pointValueDao(List<PointValueDaoDefinition> defs) {
-                var className = "com.serotonin.m2m2.module.definitions.db.DefaultPointValueDaoDefinition";
-                if ("ias-tsdb".equals(implementation)) {
-                    className = "com.infiniteautomation.nosql.MangoNoSqlPointValueDaoDefinition";
-                } else if (!"sql".equals(implementation)) {
-                    throw new UnsupportedOperationException();
-                }
-
-                final var classNameFinal = className;
-
-                PointValueDaoDefinition def = defs.stream()
-                        .filter(d -> d.getClass().getName().equals(classNameFinal))
-                        .findFirst()
-                        .orElseThrow();
-                return def.getPointValueDao();
-            }
-
-            @Bean
-            @Primary
-            public DatabaseProxy databaseProxy(DatabaseProxyFactory factory, DatabaseProxyConfiguration configuration) {
-                if ("h2:memory".equals(databaseType)) {
-                    return new H2InMemoryDatabaseProxy(configuration);
-                } else {
-                    return factory.createDatabaseProxy(DatabaseType.valueOf(databaseType.toUpperCase()));
-                }
-            }
-        }
-
         @Override
         protected void preInitialize() {
             MockMangoProperties props = (MockMangoProperties) Common.envProps;
@@ -159,6 +160,13 @@ public abstract class TsdbBenchmark {
             // load the NoSQL module defs
             loadModules();
 
+            // add this instance as a bean so our parameters can be used in the configuration
+            GenericBeanDefinition beanDefinition = new GenericBeanDefinition();
+            beanDefinition.setBeanClass(getClass());
+            beanDefinition.setInstanceSupplier(() -> this);
+            beanDefinition.setScope(ConfigurableBeanFactory.SCOPE_SINGLETON);
+
+            lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
             lifecycle.addRuntimeContextConfiguration(BenchmarkConfig.class);
         }
 
