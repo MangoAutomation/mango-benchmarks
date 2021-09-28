@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Setup;
@@ -25,13 +26,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 import com.infiniteautomation.mango.benchmarks.MockMango;
-import com.infiniteautomation.mango.spring.DatabaseProxyConfiguration;
 import com.serotonin.m2m2.Common;
-import com.serotonin.m2m2.MockMangoProperties;
-import com.serotonin.m2m2.db.DatabaseProxy;
-import com.serotonin.m2m2.db.DatabaseProxyFactory;
-import com.serotonin.m2m2.db.DatabaseType;
-import com.serotonin.m2m2.db.H2InMemoryDatabaseProxy;
 import com.serotonin.m2m2.db.PointValueDaoDefinition;
 import com.serotonin.m2m2.db.dao.PointValueDao;
 
@@ -115,16 +110,6 @@ public abstract class TsdbBenchmark {
                     .orElseThrow();
             return def.getPointValueDao();
         }
-
-        @Bean
-        @Primary
-        public DatabaseProxy databaseProxy(TsdbMockMango mango, DatabaseProxyFactory factory, DatabaseProxyConfiguration configuration) {
-            if ("h2:memory".equals(mango.databaseType)) {
-                return new H2InMemoryDatabaseProxy(configuration);
-            } else {
-                return factory.createDatabaseProxy(DatabaseType.valueOf(mango.databaseType.toUpperCase()));
-            }
-        }
     }
 
     public static class TsdbMockMango extends MockMango {
@@ -152,10 +137,18 @@ public abstract class TsdbBenchmark {
 
         @Override
         protected void preInitialize() {
-            MockMangoProperties props = (MockMangoProperties) Common.envProps;
             int maxOpenFiles = parseMultiplier(this.maxOpenFiles, "X", points);
-            props.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
-            props.setProperty("db.nosql.shardStreamType", shardStreamType);
+            properties.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
+            properties.setProperty("db.nosql.shardStreamType", shardStreamType);
+
+            if ("h2:memory".equals(databaseType)) {
+                properties.setProperty("db.type", "h2");
+                // default url in test environment is in-memory url, however lets not set the LOCK_MODE parameter
+                properties.setProperty("db.url", "jdbc:h2:mem:" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
+            } else {
+                properties.setProperty("db.type", databaseType);
+                properties.setProperty("db.url", "jdbc:h2:databases/mah2");
+            }
 
             // load the NoSQL module defs
             loadModules();
