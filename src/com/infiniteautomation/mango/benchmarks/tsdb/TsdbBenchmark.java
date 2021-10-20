@@ -22,12 +22,9 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 
 import com.infiniteautomation.mango.benchmarks.MockMango;
 import com.serotonin.m2m2.Common;
-import com.serotonin.m2m2.db.PointValueDaoDefinition;
 import com.serotonin.m2m2.db.dao.PointValueDao;
 
 public abstract class TsdbBenchmark {
@@ -91,38 +88,23 @@ public abstract class TsdbBenchmark {
         return Integer.parseInt(param);
     }
 
-    public static class BenchmarkConfig {
-        @Primary
-        @Bean
-        public PointValueDao pointValueDao(TsdbMockMango mango, List<PointValueDaoDefinition> defs) {
-            var className = "com.serotonin.m2m2.module.definitions.db.DefaultPointValueDaoDefinition";
-            if ("ias-tsdb".equals(mango.implementation)) {
-                className = "com.infiniteautomation.nosql.MangoNoSqlPointValueDaoDefinition";
-            } else if (!"sql".equals(mango.implementation)) {
-                throw new UnsupportedOperationException();
-            }
-
-            final var classNameFinal = className;
-
-            PointValueDaoDefinition def = defs.stream()
-                    .filter(d -> d.getClass().getName().equals(classNameFinal))
-                    .findFirst()
-                    .orElseThrow();
-            return def.getPointValueDao();
-        }
-    }
-
     public static class TsdbMockMango extends MockMango {
         //@Param({"h2:memory", "h2"})
         @Param({"h2"})
         String databaseType;
 
-        @Param({"ias-tsdb", "sql"})
+        @Param({"ias-tsdb", "sql", "tsl"})
         String implementation;
 
+        /**
+         * This default is overridden via {@link TsdbBenchmark#DEFAULT_THREADS}
+         */
         @Param({"1"})
         int threads;
 
+        /**
+         * This default is overridden via {@link TsdbBenchmark#DEFAULT_POINTS}
+         */
         @Param({"1"})
         int points;
 
@@ -150,6 +132,16 @@ public abstract class TsdbBenchmark {
                 properties.setProperty("db.url", "jdbc:h2:databases/mah2");
             }
 
+            properties.setProperty("db.nosql.enabled", Boolean.toString("ias-tsdb".equals(implementation)));
+            properties.setProperty("db.tsnext.enabled", Boolean.toString("tsl".equals(implementation)));
+
+            properties.setProperty("db.tsnext.type", "memory");
+            properties.setProperty("db.tsnext.memory.seriesValueLimit", "-1");
+            properties.setProperty("db.tsnext.batchInsert.enable", "false");
+
+            // disable batch size; so it doesn't take forever to delete point values from SQL on lifecycle terminate
+            properties.setProperty("db.batchSize", "-1");
+
             // load the NoSQL module defs
             loadModules();
 
@@ -160,7 +152,6 @@ public abstract class TsdbBenchmark {
             beanDefinition.setScope(ConfigurableBeanFactory.SCOPE_SINGLETON);
 
             lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
-            lifecycle.addRuntimeContextConfiguration(BenchmarkConfig.class);
         }
 
         @Setup

@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -53,12 +54,15 @@ public class Read extends TsdbBenchmark {
         final int valuesPerPoint = 10_000;
         final int valuesPerRead = 10;
         final int interval = 1000;
+        final long startTimestamp = 0;
+        final long endTimestamp = startTimestamp + valuesPerPoint * interval;
+
         long readStart = 0;
-        long readEnd = readStart + valuesPerRead * interval;
+        long readEnd = 0;
         final Random random = new Random();
         List<DataPointVO> points;
 
-        @Setup
+        @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
             this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
             for (DataPointVO point : points) {
@@ -69,15 +73,21 @@ public class Read extends TsdbBenchmark {
             System.out.printf("Finished inserting %d values for %d points%n", valuesPerPoint, mango.points / mango.threads);
         }
 
-        private void nextRead() {
+        @Setup(Level.Invocation)
+        public void nextRead() {
             this.readStart = readEnd;
             this.readEnd = readStart + valuesPerRead * interval;
+
+            // loop back to start of data
+            if (readEnd > endTimestamp) {
+                readEnd = 0;
+                nextRead();
+            }
         }
     }
 
     @Benchmark
     public void wideBookendQuery(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
         mango.pvDao.wideBookendQueryCombined(readState.points, readState.readStart, readState.readEnd, null, blackhole::consume);
-        readState.nextRead();
     }
 }
