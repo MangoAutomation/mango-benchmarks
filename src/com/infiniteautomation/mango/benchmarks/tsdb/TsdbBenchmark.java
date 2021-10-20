@@ -157,8 +157,9 @@ public abstract class TsdbBenchmark {
             properties.setProperty("db.tsnext.memory.seriesValueLimit", "-1");
             properties.setProperty("db.tsnext.batchInsert.enable", "false");
 
-            // disable batch size; so it doesn't take forever to delete point values from SQL on lifecycle terminate
-            properties.setProperty("db.batchSize", "-1");
+            // disable batch delete size; so it doesn't take forever to delete point values from SQL on lifecycle terminate
+            properties.setProperty("db.batchDeleteSize", "-1");
+            properties.setProperty("db.batchSize", "1000");
 
             // load the NoSQL module defs
             loadModules();

@@ -64,13 +64,18 @@ public class Read extends TsdbBenchmark {
 
         @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
-            this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
+            int pointsPerThread = mango.points / mango.threads;
+
+            this.points = mango.createDataPoints(pointsPerThread, Collections.emptyMap());
             for (DataPointVO point : points) {
                 for (int i = 0; i < valuesPerPoint; i++) {
-                    mango.pvDao.savePointValueSync(point, new PointValueTime(random.nextDouble(), readStart + i * interval), null);
+                    mango.pvDao.savePointValueAsync(point, new PointValueTime(random.nextDouble(), readStart + i * interval), null);
                 }
             }
-            System.out.printf("Finished inserting %d values for %d points%n", valuesPerPoint, mango.points / mango.threads);
+
+            System.out.printf("Saved %d values (for %d points)%n", valuesPerPoint * pointsPerThread, pointsPerThread);
+            mango.pvDao.flushPointValues();
+            System.out.printf("Finished flushing %d values%n", valuesPerPoint * pointsPerThread);
         }
 
         @Setup(Level.Invocation)
