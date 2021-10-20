@@ -4,14 +4,19 @@
 
 package com.infiniteautomation.mango.benchmarks.tsdb;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.results.RunResult;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -22,6 +27,9 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import com.infiniteautomation.mango.benchmarks.MockMango;
 import com.serotonin.m2m2.Common;
@@ -88,12 +96,14 @@ public abstract class TsdbBenchmark {
         return Integer.parseInt(param);
     }
 
+    @State(Scope.Benchmark)
     public static class TsdbMockMango extends MockMango {
-        //@Param({"h2:memory", "h2"})
-        @Param({"h2"})
+        //@Param({"h2:memory", "h2", "mysql})
+        @Param({"h2", "mysql"})
         String databaseType;
 
-        @Param({"ias-tsdb", "sql", "tsl"})
+        //@Param({"ias-tsdb", "sql", "tsl"})
+        @Param({"sql"})
         String implementation;
 
         /**
@@ -116,6 +126,7 @@ public abstract class TsdbBenchmark {
         String shardStreamType;
 
         PointValueDao pvDao;
+        JdbcDatabaseContainer<?> jdbcContainer;
 
         @Override
         protected void preInitialize() {
@@ -123,13 +134,19 @@ public abstract class TsdbBenchmark {
             properties.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
             properties.setProperty("db.nosql.shardStreamType", shardStreamType);
 
-            if ("h2:memory".equals(databaseType)) {
+            properties.setProperty("db.type", databaseType);
+            if (jdbcContainer != null) {
+                properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
+                properties.setProperty("db.username", jdbcContainer.getUsername());
+                properties.setProperty("db.password", jdbcContainer.getPassword());
+            } else if ("h2:memory".equals(databaseType)) {
                 properties.setProperty("db.type", "h2");
                 // default url in test environment is in-memory url, however lets not set the LOCK_MODE parameter
                 properties.setProperty("db.url", "jdbc:h2:mem:" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
-            } else {
-                properties.setProperty("db.type", databaseType);
+            } else if ("h2".equals(databaseType)) {
                 properties.setProperty("db.url", "jdbc:h2:databases/mah2");
+            } else {
+                throw new IllegalStateException("Unknown database type: " + databaseType);
             }
 
             properties.setProperty("db.nosql.enabled", Boolean.toString("ias-tsdb".equals(implementation)));
@@ -154,9 +171,28 @@ public abstract class TsdbBenchmark {
             lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
         }
 
-        @Setup
+        @Setup(Level.Trial)
         public void setup() {
             this.pvDao = Common.getBean(PointValueDao.class);
+        }
+
+        @Override
+        public void setupTrial(SetSecurityContext setSecurityContext) throws Exception {
+            if ("mysql".equals(databaseType)) {
+                this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.34"));
+            }
+            if (jdbcContainer != null) {
+                jdbcContainer.start();
+            }
+            super.setupTrial(setSecurityContext);
+        }
+
+        @Override
+        public void tearDownTrial() throws IOException, SQLException {
+            super.tearDownTrial();
+            if (jdbcContainer != null) {
+                jdbcContainer.stop();
+            }
         }
     }
 
