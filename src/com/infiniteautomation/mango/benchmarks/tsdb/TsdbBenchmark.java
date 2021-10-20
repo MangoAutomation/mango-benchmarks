@@ -151,6 +151,7 @@ public abstract class TsdbBenchmark {
 
             properties.setProperty("db.nosql.enabled", Boolean.toString("ias-tsdb".equals(implementation)));
             properties.setProperty("db.tsnext.enabled", Boolean.toString("tsl".equals(implementation)));
+            properties.setProperty("internal.monitor.diskUsage.enabled", "false");
 
             properties.setProperty("db.tsnext.type", "memory");
             properties.setProperty("db.tsnext.memory.seriesValueLimit", "-1");
