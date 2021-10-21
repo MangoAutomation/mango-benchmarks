@@ -4,6 +4,7 @@
 
 package com.infiniteautomation.mango.benchmarks.tsdb;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -28,6 +29,8 @@ import org.openjdk.jmh.runner.options.CommandLineOptionException;
 import org.openjdk.jmh.runner.options.CommandLineOptions;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+import com.serotonin.m2m2.db.dao.BatchPointValue;
+import com.serotonin.m2m2.db.dao.BatchPointValueImpl;
 import com.serotonin.m2m2.rt.dataImage.PointValueTime;
 import com.serotonin.m2m2.vo.DataPointVO;
 
@@ -68,14 +71,13 @@ public class Read extends TsdbBenchmark {
 
             this.points = mango.createDataPoints(pointsPerThread, Collections.emptyMap());
             for (DataPointVO point : points) {
+                List<BatchPointValue> values = new ArrayList<>(valuesPerPoint);
                 for (int i = 0; i < valuesPerPoint; i++) {
-                    mango.pvDao.savePointValueAsync(point, new PointValueTime(random.nextDouble(), readStart + i * interval), null);
+                    values.add(new BatchPointValueImpl(point, new PointValueTime(random.nextDouble(), readStart + i * interval)));
                 }
+                mango.pvDao.savePointValues(values.stream());
             }
-
             System.out.printf("Saved %d values (for %d points)%n", valuesPerPoint * pointsPerThread, pointsPerThread);
-            mango.pvDao.flushPointValues();
-            System.out.printf("Finished flushing %d values%n", valuesPerPoint * pointsPerThread);
         }
 
         @Setup(Level.Invocation)
