@@ -94,7 +94,12 @@ public class Read extends TsdbBenchmark {
     }
 
     @Benchmark
-    public void wideBookendQuery(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+    public void wideBookendQueryCombined(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
         mango.pvDao.wideBookendQueryCombined(readState.points, readState.readStart, readState.readEnd, null, blackhole::consume);
+    }
+
+    @Benchmark
+    public void wideBookendQueryPerPoint(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+        mango.pvDao.wideBookendQueryPerPoint(readState.points, readState.readStart, readState.readEnd, null, blackhole::consume);
     }
 }
