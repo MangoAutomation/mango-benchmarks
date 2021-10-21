@@ -30,10 +30,12 @@ java -cp <cp> com.infiniteautomation.mango.benchmarks.tsdb.Insert -p threads=1C 
 ### Available parameters
 
 #### com.infiniteautomation.mango.benchmarks.tsdb.Insert
+#### com.infiniteautomation.mango.benchmarks.tsdb.Read
+
 name | default | options | description
 --- | --- | --- | ---
 threads | 1C | number > 0 | Number of threads writing to TSDB, use "C" suffix to multiply by number of CPU cores
 points | 1000 | number > 0 | Number of data points, use "C" suffix to multiply by number of CPU cores
-databaseType | h2 | h2, h2:mem, mysql | SQL database type
-implementation | sql, ias-tsdb | sql, ias-tsdb | PointValueDao implementation
+implementation | sql:h2, sql:mysql, ias-tsdb, tsl:memory | sql:h2, sql:mysql, ias-tsdb, tsl:memory | PointValueDao implementation
 maxOpenFiles | 2X | number > 0 | IasTsdb max open files setting, use "X" suffix to multiply by number of points
+shardStreamType | MAPPED_BYTE_BUFFER | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER | IasTsdb shardStreamType setting
