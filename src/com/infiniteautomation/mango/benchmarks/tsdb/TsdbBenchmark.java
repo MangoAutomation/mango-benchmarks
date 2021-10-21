@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
@@ -98,12 +97,8 @@ public abstract class TsdbBenchmark {
 
     @State(Scope.Benchmark)
     public static class TsdbMockMango extends MockMango {
-        //@Param({"h2:memory", "h2", "mysql})
-        @Param({"h2", "mysql"})
-        String databaseType;
 
-        //@Param({"ias-tsdb", "sql", "tsl"})
-        @Param({"sql"})
+        @Param({"sql:h2", "sql:mysql", "ias-tsdb", "tsl:memory"})
         String implementation;
 
         /**
@@ -134,28 +129,31 @@ public abstract class TsdbBenchmark {
             properties.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
             properties.setProperty("db.nosql.shardStreamType", shardStreamType);
 
-            properties.setProperty("db.type", databaseType);
+            properties.setProperty("db.nosql.enabled", Boolean.toString(implementation.equals("ias-tsdb")));
+            properties.setProperty("db.tsl.enabled", Boolean.toString(implementation.startsWith("tsl:")));
+
+            // run h2 disk database by default, overridden below
+            properties.setProperty("db.type", "h2");
+            properties.setProperty("db.url", "jdbc:h2:databases/mah2");
+
+            var parts = implementation.split(":");
+            if (implementation.startsWith("sql:")) {
+                properties.setProperty("db.type", parts[1]);
+            } else if (implementation.startsWith("tsl:")) {
+                properties.setProperty("db.tsl.type", parts[1]);
+                properties.setProperty("db.tsl.memory.seriesValueLimit", "-1");
+                properties.setProperty("db.tsl.batchInsert.enable", "false");
+            } else if (!implementation.equals("ias-tsdb")) {
+                throw new IllegalStateException("Unknown implementation: " + implementation);
+            }
+
             if (jdbcContainer != null) {
                 properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
                 properties.setProperty("db.username", jdbcContainer.getUsername());
                 properties.setProperty("db.password", jdbcContainer.getPassword());
-            } else if ("h2:memory".equals(databaseType)) {
-                properties.setProperty("db.type", "h2");
-                // default url in test environment is in-memory url, however lets not set the LOCK_MODE parameter
-                properties.setProperty("db.url", "jdbc:h2:mem:" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1");
-            } else if ("h2".equals(databaseType)) {
-                properties.setProperty("db.url", "jdbc:h2:databases/mah2");
-            } else {
-                throw new IllegalStateException("Unknown database type: " + databaseType);
             }
 
-            properties.setProperty("db.nosql.enabled", Boolean.toString("ias-tsdb".equals(implementation)));
-            properties.setProperty("db.tsnext.enabled", Boolean.toString("tsl".equals(implementation)));
             properties.setProperty("internal.monitor.diskUsage.enabled", "false");
-
-            properties.setProperty("db.tsnext.type", "memory");
-            properties.setProperty("db.tsnext.memory.seriesValueLimit", "-1");
-            properties.setProperty("db.tsnext.batchInsert.enable", "false");
 
             // disable batch delete size; so it doesn't take forever to delete point values from SQL on lifecycle terminate
             properties.setProperty("db.batchDeleteSize", "-1");
@@ -180,7 +178,7 @@ public abstract class TsdbBenchmark {
 
         @Override
         public void setupTrial(SetSecurityContext setSecurityContext) throws Exception {
-            if ("mysql".equals(databaseType)) {
+            if (implementation.equals("sql:mysql")) {
                 this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.34"));
             }
             if (jdbcContainer != null) {
