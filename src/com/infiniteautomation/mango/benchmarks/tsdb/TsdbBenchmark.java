@@ -26,8 +26,10 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.testcontainers.containers.ClickHouseContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import com.infiniteautomation.mango.benchmarks.MockMango;
@@ -108,7 +110,7 @@ public abstract class TsdbBenchmark {
     @State(Scope.Benchmark)
     public static class TsdbMockMango extends MockMango {
 
-        @Param({"sql:h2", "sql:mysql", "ias-tsdb", "tsl:memory"})
+        @Param({"sql:h2", "sql:mysql", "ias-tsdb", "tsl:memory", "tsl:quest", "tsl:timescale", "tsl:clickhouse"})
         String implementation;
 
         /**
@@ -166,10 +168,18 @@ public abstract class TsdbBenchmark {
                 throw new IllegalStateException("Unknown implementation: " + implementation);
             }
 
-            if (jdbcContainer != null) {
-                properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
-                properties.setProperty("db.username", jdbcContainer.getUsername());
-                properties.setProperty("db.password", jdbcContainer.getPassword());
+            switch (implementation) {
+                case "sql:mysql":
+                    properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
+                    properties.setProperty("db.username", jdbcContainer.getUsername());
+                    properties.setProperty("db.password", jdbcContainer.getPassword());
+                    break;
+                case "tsl:clickhouse":
+                    setProperties("db.tsl.clickhouse.");
+                    break;
+                case "tsl:timescale":
+                    setProperties("db.tsl.timescale.");
+                    break;
             }
 
             properties.setProperty("internal.monitor.diskUsage.enabled", "false");
@@ -190,6 +200,14 @@ public abstract class TsdbBenchmark {
             lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
         }
 
+        private void setProperties(String prefix) {
+            properties.setProperty(prefix + "host", jdbcContainer.getHost());
+            properties.setProperty(prefix + "db", jdbcContainer.getDatabaseName());
+            properties.setProperty(prefix + "username", jdbcContainer.getUsername());
+            properties.setProperty(prefix + "password", jdbcContainer.getPassword());
+            properties.setProperty(prefix + "port", Integer.toString(jdbcContainer.getFirstMappedPort()));
+        }
+
         @Setup(Level.Trial)
         public void setup() {
             this.pvDao = Common.getBean(PointValueDao.class);
@@ -197,9 +215,23 @@ public abstract class TsdbBenchmark {
 
         @Override
         public void setupTrial(SetSecurityContext setSecurityContext) throws Exception {
-            if (implementation.equals("sql:mysql")) {
-                this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.34"));
+            switch (implementation) {
+                case "sql:mysql":
+                    this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.34"));
+                    break;
+                case "tsl:clickhouse":
+                    this.jdbcContainer = new ClickHouseContainer(DockerImageName.parse("yandex/clickhouse-server").withTag("latest")) {
+                        @Override
+                        public String getDatabaseName() {
+                            return "default";
+                        }
+                    };
+                    break;
+                case "tsl:timescale":
+                    this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("latest-pg13"));
+                    break;
             }
+
             if (jdbcContainer != null) {
                 jdbcContainer.start();
             }

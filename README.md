@@ -40,7 +40,7 @@ name | default | options | description
 --- | --- | --- | ---
 threads | 1C | number > 0 | Number of threads writing to TSDB, use "C" suffix to multiply by number of CPU cores
 points | 1000 | number > 0 | Total number of data points, split between threads, use "C" suffix to multiply by number of CPU cores
-implementation | sql:h2, sql:mysql, ias-tsdb, tsl:memory | sql:h2, sql:mysql, ias-tsdb, tsl:memory | PointValueDao implementation
+implementation | sql:h2, sql:mysql, ias-tsdb, tsl:memory, tsl:quest, tsl:timescale, tsl:clickhouse | sql:h2, sql:mysql, ias-tsdb, tsl:memory, tsl:quest, tsl:timescale, tsl:clickhouse | PointValueDao implementation
 batchSize | 1000 | number > 0 | Number of point values to read per point, per iteration
 maxOpenFiles | 2X | number > 0 | IasTsdb max open files setting, use "X" suffix to multiply by number of points
 shardStreamType | MAPPED_BYTE_BUFFER | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER | IasTsdb shardStreamType setting
