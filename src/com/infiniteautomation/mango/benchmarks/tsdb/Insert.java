@@ -58,6 +58,7 @@ public class Insert extends TsdbBenchmark {
         final Random random = new Random();
 
         List<DataPointVO> points;
+        // we don't reset the index between iterations as this would result in backdates
         long index;
         int batchSize;
 
@@ -65,11 +66,6 @@ public class Insert extends TsdbBenchmark {
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
             this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
             this.batchSize = mango.batchSize;
-        }
-
-        @Setup(Level.Iteration)
-        public void setupIteration() {
-            this.index = 0;
         }
 
         public PointValueTime newValue(long timestamp) {
