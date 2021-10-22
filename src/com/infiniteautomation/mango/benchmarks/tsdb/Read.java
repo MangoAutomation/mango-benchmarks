@@ -32,13 +32,14 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import com.serotonin.m2m2.db.dao.BatchPointValue;
 import com.serotonin.m2m2.db.dao.BatchPointValueImpl;
+import com.serotonin.m2m2.db.dao.PointValueDao.TimeOrder;
 import com.serotonin.m2m2.rt.dataImage.PointValueTime;
 import com.serotonin.m2m2.vo.DataPointVO;
 
 @Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 1, time = 60)
-@Measurement(iterations = 3, time = 10)
+@Warmup(iterations = 5, time = 10)
+@Measurement(iterations = 10, time = 10)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Read extends TsdbBenchmark {
 
@@ -86,6 +87,12 @@ public class Read extends TsdbBenchmark {
             System.out.printf("Saved %d values (for %d points)%n", valuesInsertedPerPoint * pointsPerThread, pointsPerThread);
         }
 
+        @Setup(Level.Iteration)
+        public void setupIteration() {
+            this.readStart = 0;
+            this.readEnd = 0;
+        }
+
         @Setup(Level.Invocation)
         public void nextRead() {
             this.readStart = readEnd;
@@ -97,6 +104,26 @@ public class Read extends TsdbBenchmark {
                 this.readEnd = batchSize * interval;
             }
         }
+    }
+
+    @Benchmark
+    public void forwardReadCombined(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+        mango.pvDao.getPointValuesCombined(readState.points, readState.readStart, readState.readEnd, null, TimeOrder.ASCENDING, blackhole::consume);
+    }
+
+    @Benchmark
+    public void forwardReadPerPoint(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+        mango.pvDao.getPointValuesPerPoint(readState.points, readState.readStart, readState.readEnd, null, TimeOrder.ASCENDING, blackhole::consume);
+    }
+
+    @Benchmark
+    public void reverseReadCombined(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+        mango.pvDao.getPointValuesCombined(readState.points, readState.readStart, readState.readEnd, null, TimeOrder.DESCENDING, blackhole::consume);
+    }
+
+    @Benchmark
+    public void reverseReadPerPoint(TsdbMockMango mango, ReadState readState, Blackhole blackhole) {
+        mango.pvDao.getPointValuesPerPoint(readState.points, readState.readStart, readState.readEnd, null, TimeOrder.DESCENDING, blackhole::consume);
     }
 
     @Benchmark

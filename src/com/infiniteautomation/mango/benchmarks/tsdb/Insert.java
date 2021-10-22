@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -35,8 +36,8 @@ import com.serotonin.m2m2.vo.DataPointVO;
 
 @Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 2, time = 60)
-@Measurement(iterations = 5, time = 60)
+@Warmup(iterations = 5, time = 10)
+@Measurement(iterations = 10, time = 10)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Insert extends TsdbBenchmark {
 
@@ -53,16 +54,22 @@ public class Insert extends TsdbBenchmark {
     @State(Scope.Thread)
     public static class InsertParams {
 
-        final Random random = new Random();
-        List<DataPointVO> points;
-        long index = 0;
         final long timeIncrement = 5000L;
+        final Random random = new Random();
+
+        List<DataPointVO> points;
+        long index;
         int batchSize;
 
-        @Setup
+        @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
             this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
             this.batchSize = mango.batchSize;
+        }
+
+        @Setup(Level.Iteration)
+        public void setupIteration() {
+            this.index = 0;
         }
 
         public PointValueTime newValue(long timestamp) {
