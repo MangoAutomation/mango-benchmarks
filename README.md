@@ -27,10 +27,13 @@ Example:
 java -cp <cp> com.infiniteautomation.mango.benchmarks.tsdb.Insert -p threads=1C -p points=100,1000
 ```
 
-### Available parameters
+## Benchmarks and their parameters
 
-#### com.infiniteautomation.mango.benchmarks.tsdb.Insert
-#### com.infiniteautomation.mango.benchmarks.tsdb.Read
+### Read benchmark
+
+* Class: `com.infiniteautomation.mango.benchmarks.tsdb.Read`
+
+#### Parameters
 
 name | default | options | description
 --- | --- | --- | ---
@@ -39,3 +42,15 @@ points | 1000 | number > 0 | Number of data points, use "C" suffix to multiply b
 implementation | sql:h2, sql:mysql, ias-tsdb, tsl:memory | sql:h2, sql:mysql, ias-tsdb, tsl:memory | PointValueDao implementation
 maxOpenFiles | 2X | number > 0 | IasTsdb max open files setting, use "X" suffix to multiply by number of points
 shardStreamType | MAPPED_BYTE_BUFFER | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER | IasTsdb shardStreamType setting
+
+### Insert benchmark
+
+* Class: `com.infiniteautomation.mango.benchmarks.tsdb.Insert`
+
+#### Parameters
+
+All parameters from the Read benchmark are available, plus the following
+
+name | default | options | description
+--- | --- | --- | ---
+batchSize | 1, 100, 1000 | number > 0 | Number of point values to insert per point, per iteration
