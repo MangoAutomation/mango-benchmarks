@@ -228,7 +228,8 @@ public abstract class TsdbBenchmark {
                     };
                     break;
                 case "tsl:timescale":
-                    this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("latest-pg13"));
+                    this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("latest-pg13")
+                            .asCompatibleSubstituteFor("postgres"));
                     break;
             }
 
