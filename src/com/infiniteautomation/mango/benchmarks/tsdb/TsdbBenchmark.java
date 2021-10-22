@@ -175,10 +175,10 @@ public abstract class TsdbBenchmark {
                     properties.setProperty("db.password", jdbcContainer.getPassword());
                     break;
                 case "tsl:clickhouse":
-                    setProperties("db.tsl.clickhouse.");
+                    setTslProperties("db.tsl.clickhouse.");
                     break;
                 case "tsl:timescale":
-                    setProperties("db.tsl.timescale.");
+                    setTslProperties("db.tsl.timescale.");
                     break;
             }
 
@@ -200,7 +200,7 @@ public abstract class TsdbBenchmark {
             lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
         }
 
-        private void setProperties(String prefix) {
+        private void setTslProperties(String prefix) {
             properties.setProperty(prefix + "host", jdbcContainer.getHost());
             properties.setProperty(prefix + "db", jdbcContainer.getDatabaseName());
             properties.setProperty(prefix + "username", jdbcContainer.getUsername());
