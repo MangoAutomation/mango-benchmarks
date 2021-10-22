@@ -19,7 +19,6 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -54,17 +53,16 @@ public class Insert extends TsdbBenchmark {
     @State(Scope.Thread)
     public static class InsertParams {
 
-        @Param({"1", "100", "1000"})
-        int batchSize;
-
         final Random random = new Random();
         List<DataPointVO> points;
         long index = 0;
         final long timeIncrement = 5000L;
+        int batchSize;
 
         @Setup
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
             this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
+            this.batchSize = mango.batchSize;
         }
 
         public PointValueTime newValue(long timestamp) {

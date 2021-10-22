@@ -19,6 +19,7 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -54,41 +55,46 @@ public class Read extends TsdbBenchmark {
     @State(Scope.Thread)
     public static class ReadState {
 
-        final int valuesPerPoint = 10_000;
-        final int valuesPerRead = 100;
-        final int interval = 1000;
-        final long startTimestamp = 0;
-        final long endTimestamp = startTimestamp + valuesPerPoint * interval;
+        @Param("10000")
+        int valuesInsertedPerPoint;
 
-        long readStart = 0;
-        long readEnd = 0;
+        final long interval = 5000;
+        final long startTimestamp = 0;
+
+        int batchSize;
+        long endTimestamp;
+        long readStart;
+        long readEnd;
+
         final Random random = new Random();
         List<DataPointVO> points;
 
         @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
+            this.endTimestamp = startTimestamp + valuesInsertedPerPoint * interval;
+            this.batchSize = mango.batchSize;
             int pointsPerThread = mango.points / mango.threads;
 
             this.points = mango.createDataPoints(pointsPerThread, Collections.emptyMap());
             for (DataPointVO point : points) {
-                List<BatchPointValue> values = new ArrayList<>(valuesPerPoint);
-                for (int i = 0; i < valuesPerPoint; i++) {
+                List<BatchPointValue> values = new ArrayList<>(valuesInsertedPerPoint);
+                for (int i = 0; i < valuesInsertedPerPoint; i++) {
                     values.add(new BatchPointValueImpl(point, new PointValueTime(random.nextDouble(), readStart + i * interval)));
                 }
                 mango.pvDao.savePointValues(values.stream());
             }
-            System.out.printf("Saved %d values (for %d points)%n", valuesPerPoint * pointsPerThread, pointsPerThread);
+            System.out.printf("Saved %d values (for %d points)%n", valuesInsertedPerPoint * pointsPerThread, pointsPerThread);
         }
 
         @Setup(Level.Invocation)
         public void nextRead() {
             this.readStart = readEnd;
-            this.readEnd = readStart + valuesPerRead * interval;
+            this.readEnd = readStart + batchSize * interval;
 
             // loop back to start of data
             if (readEnd > endTimestamp) {
-                readEnd = 0;
-                nextRead();
+                this.readStart = 0;
+                this.readEnd = batchSize * interval;
             }
         }
     }

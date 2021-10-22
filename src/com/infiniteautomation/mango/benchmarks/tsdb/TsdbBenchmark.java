@@ -37,8 +37,10 @@ import com.serotonin.m2m2.db.dao.PointValueDao;
 public abstract class TsdbBenchmark {
     public static final String THREADS_PARAM = "threads";
     public static final String POINTS_PARAM = "points";
+    public static final String BATCH_SIZE_PARAM = "batchSize";
     public static final Collection<String> DEFAULT_THREADS = Collections.singletonList("1C");
     public static final Collection<String> DEFAULT_POINTS = Collections.singletonList("1000");
+    public static final Collection<String> DEFAULT_BATCH_SIZE = Collections.singletonList("1000");
     public final static int NUM_CPU_CORES = Runtime.getRuntime().availableProcessors();
 
     /**
@@ -58,21 +60,29 @@ public abstract class TsdbBenchmark {
                 .stream()
                 .mapToInt(TsdbBenchmark::parseCpuMultiplier).toArray();
 
+        int[] batchSizeParams = options.getParameter(BATCH_SIZE_PARAM)
+                .orElse(DEFAULT_BATCH_SIZE)
+                .stream()
+                .mapToInt(Integer::parseInt).toArray();
+
         for (int threads : threadsParams) {
             for (int points : pointsParams) {
-                var builder = new OptionsBuilder()
-                        .parent(options)
-                        .threads(threads)
-                        .operationsPerInvocation(points / threads)
-                        .param(THREADS_PARAM, Integer.toString(threads))
-                        .param(POINTS_PARAM, Integer.toString(points));
+                for (int batchSize : batchSizeParams) {
+                    var builder = new OptionsBuilder()
+                            .parent(options)
+                            .threads(threads)
+                            .operationsPerInvocation(points * batchSize)
+                            .param(THREADS_PARAM, Integer.toString(threads))
+                            .param(POINTS_PARAM, Integer.toString(points))
+                            .param(BATCH_SIZE_PARAM, Integer.toString(batchSize));
 
-                if (options.getIncludes().isEmpty()) {
-                    builder.include(getClass().getName());
+                    if (options.getIncludes().isEmpty()) {
+                        builder.include(getClass().getName());
+                    }
+
+                    var opts = builder.build();
+                    results.addAll(new Runner(opts).run());
                 }
-
-                var opts = builder.build();
-                results.addAll(new Runner(opts).run());
             }
         }
 
@@ -108,10 +118,19 @@ public abstract class TsdbBenchmark {
         int threads;
 
         /**
-         * This default is overridden via {@link TsdbBenchmark#DEFAULT_POINTS}
+         * Number of points to insert/read values for, the points are split between the threads.
+         * So if you set points to 1000 and threads to 10, then each thread will operate on a set of 100 points.
+         * This default is overridden via {@link TsdbBenchmark#DEFAULT_POINTS}.
          */
         @Param({"1"})
         int points;
+
+        /**
+         * Number of point values which are inserted/read per point.
+         * This default is overridden via {@link TsdbBenchmark#DEFAULT_BATCH_SIZE}.
+         */
+        @Param({"1"})
+        int batchSize;
 
         @Param({"2X"})
         String maxOpenFiles;

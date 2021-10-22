@@ -32,20 +32,23 @@ java -cp <cp> com.infiniteautomation.mango.benchmarks.tsdb.Insert -p threads=1C 
 ### Read benchmark
 
 * Class: `com.infiniteautomation.mango.benchmarks.tsdb.Read`
+* Result: op/s represents the total point values read per second, across all points and threads.
 
 #### Parameters
 
 name | default | options | description
 --- | --- | --- | ---
 threads | 1C | number > 0 | Number of threads writing to TSDB, use "C" suffix to multiply by number of CPU cores
-points | 1000 | number > 0 | Number of data points, use "C" suffix to multiply by number of CPU cores
+points | 1000 | number > 0 | Total number of data points, split between threads, use "C" suffix to multiply by number of CPU cores
 implementation | sql:h2, sql:mysql, ias-tsdb, tsl:memory | sql:h2, sql:mysql, ias-tsdb, tsl:memory | PointValueDao implementation
+batchSize | 1000 | number > 0 | Number of point values to read per point, per iteration
 maxOpenFiles | 2X | number > 0 | IasTsdb max open files setting, use "X" suffix to multiply by number of points
 shardStreamType | MAPPED_BYTE_BUFFER | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER | IasTsdb shardStreamType setting
 
 ### Insert benchmark
 
 * Class: `com.infiniteautomation.mango.benchmarks.tsdb.Insert`
+* Result: op/s represents the total point values inserted per second, across all points and threads.
 
 #### Parameters
 
@@ -53,4 +56,4 @@ All parameters from the Read benchmark are available, plus the following
 
 name | default | options | description
 --- | --- | --- | ---
-batchSize | 1, 100, 1000 | number > 0 | Number of point values to insert per point, per iteration
+batchSize | 1000 | number > 0 | Number of point values to insert per point, per iteration
