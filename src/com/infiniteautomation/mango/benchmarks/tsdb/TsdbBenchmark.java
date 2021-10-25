@@ -217,10 +217,10 @@ public abstract class TsdbBenchmark {
         public void setupTrial(SetSecurityContext setSecurityContext) throws Exception {
             switch (implementation) {
                 case "sql:mysql":
-                    this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.34"));
+                    this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.36"));
                     break;
                 case "tsl:clickhouse":
-                    this.jdbcContainer = new ClickHouseContainer(DockerImageName.parse("yandex/clickhouse-server").withTag("latest")) {
+                    this.jdbcContainer = new ClickHouseContainer(DockerImageName.parse("yandex/clickhouse-server").withTag("21.8.10.19")) {
                         @Override
                         public String getDatabaseName() {
                             return "default";
@@ -228,7 +228,7 @@ public abstract class TsdbBenchmark {
                     };
                     break;
                 case "tsl:timescale":
-                    this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("latest-pg13")
+                    this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("2.4.2-pg13")
                             .asCompatibleSubstituteFor("postgres"));
                     break;
             }
