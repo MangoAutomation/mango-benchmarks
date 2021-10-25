@@ -186,6 +186,8 @@ public abstract class TsdbBenchmark {
 
             // disable batch delete size; so it doesn't take forever to delete point values from SQL on lifecycle terminate
             properties.setProperty("db.batchDeleteSize", "-1");
+            // don't event bother deleting point values after test, containers are terminated, temp directory is removed
+            properties.setProperty("tests.after.deleteAllPointData", "false");
             properties.setProperty("db.batchSize", "1000");
 
             // load the NoSQL module defs
