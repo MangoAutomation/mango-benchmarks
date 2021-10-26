@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -24,8 +25,11 @@ import org.openjdk.jmh.runner.format.OutputFormatFactory;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
+import org.springframework.context.annotation.Bean;
 import org.testcontainers.containers.ClickHouseContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MySQLContainer;
@@ -35,6 +39,7 @@ import org.testcontainers.utility.DockerImageName;
 import com.infiniteautomation.mango.benchmarks.MockMango;
 import com.serotonin.m2m2.Common;
 import com.serotonin.m2m2.db.dao.PointValueDao;
+import com.serotonin.m2m2.db.dao.SystemSettingsDao;
 
 public abstract class TsdbBenchmark {
     public static final String THREADS_PARAM = "threads";
@@ -144,6 +149,23 @@ public abstract class TsdbBenchmark {
         PointValueDao pvDao;
         JdbcDatabaseContainer<?> jdbcContainer;
 
+        public static class BenchmarkConfig {
+            @Bean
+            public BeanPostProcessor postProcessor() {
+                return new BeanPostProcessor() {
+                    @Override
+                    public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) throws BeansException {
+                        if (bean instanceof SystemSettingsDao) {
+                            // prevents setRetentionPolicy() being called on the PointValueDao
+                            // this is required since we insert data at epoch 0, i.e. 1970
+                            ((SystemSettingsDao) bean).setIntValue(SystemSettingsDao.POINT_DATA_PURGE_PERIODS, 0);
+                        }
+                        return bean;
+                    }
+                };
+            }
+        }
+
         @Override
         protected void preInitialize() {
             int maxOpenFiles = parseMultiplier(this.maxOpenFiles, "X", points);
@@ -200,6 +222,7 @@ public abstract class TsdbBenchmark {
             beanDefinition.setScope(ConfigurableBeanFactory.SCOPE_SINGLETON);
 
             lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
+            lifecycle.addRuntimeContextConfiguration(BenchmarkConfig.class);
         }
 
         private void setTslProperties(String prefix) {
