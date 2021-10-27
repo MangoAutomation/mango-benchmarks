@@ -30,6 +30,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.annotation.Bean;
+import org.springframework.util.unit.DataSize;
 import org.testcontainers.containers.ClickHouseContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MySQLContainer;
@@ -254,7 +255,8 @@ public abstract class TsdbBenchmark {
                     break;
                 case "tsl:timescale":
                     this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("2.4.2-pg13")
-                            .asCompatibleSubstituteFor("postgres"));
+                            .asCompatibleSubstituteFor("postgres"))
+                            .withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withShmSize(DataSize.ofGigabytes(1).toBytes()));
                     break;
             }
 
