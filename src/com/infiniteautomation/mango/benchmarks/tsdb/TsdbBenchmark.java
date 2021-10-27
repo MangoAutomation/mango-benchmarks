@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.openjdk.jmh.annotations.Level;
@@ -256,7 +257,8 @@ public abstract class TsdbBenchmark {
                 case "tsl:timescale":
                     this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("2.4.2-pg13")
                             .asCompatibleSubstituteFor("postgres"))
-                            .withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withShmSize(DataSize.ofGigabytes(1).toBytes()));
+                            .withCreateContainerCmdModifier(cmd -> Objects.requireNonNull(cmd.getHostConfig())
+                                    .withShmSize(DataSize.ofGigabytes(1).toBytes()));
                     break;
             }
 
