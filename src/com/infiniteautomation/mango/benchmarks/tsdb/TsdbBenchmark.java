@@ -80,7 +80,7 @@ public abstract class TsdbBenchmark {
                     var builder = new OptionsBuilder()
                             .parent(options)
                             .threads(threads)
-                            .operationsPerInvocation(points * batchSize)
+                            .operationsPerInvocation((points / threads) * batchSize)
                             .param(THREADS_PARAM, Integer.toString(threads))
                             .param(POINTS_PARAM, Integer.toString(points))
                             .param(BATCH_SIZE_PARAM, Integer.toString(batchSize));
