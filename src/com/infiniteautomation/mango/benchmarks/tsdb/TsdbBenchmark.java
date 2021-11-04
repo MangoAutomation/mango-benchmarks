@@ -148,6 +148,9 @@ public abstract class TsdbBenchmark {
         @Param({"MAPPED_BYTE_BUFFER"})
         String shardStreamType;
 
+        @Param("false")
+        boolean disableContainers;
+
         PointValueDao pvDao;
         JdbcDatabaseContainer<?> jdbcContainer;
 
@@ -192,18 +195,20 @@ public abstract class TsdbBenchmark {
                 throw new IllegalStateException("Unknown implementation: " + implementation);
             }
 
-            switch (implementation) {
-                case "sql:mysql":
-                    properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
-                    properties.setProperty("db.username", jdbcContainer.getUsername());
-                    properties.setProperty("db.password", jdbcContainer.getPassword());
-                    break;
-                case "tsl:clickhouse":
-                    setTslProperties("db.tsl.clickhouse.");
-                    break;
-                case "tsl:timescale":
-                    setTslProperties("db.tsl.timescale.");
-                    break;
+            if (jdbcContainer != null) {
+                switch (implementation) {
+                    case "sql:mysql":
+                        properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
+                        properties.setProperty("db.username", jdbcContainer.getUsername());
+                        properties.setProperty("db.password", jdbcContainer.getPassword());
+                        break;
+                    case "tsl:clickhouse":
+                        setTslProperties("db.tsl.clickhouse.");
+                        break;
+                    case "tsl:timescale":
+                        setTslProperties("db.tsl.timescale.");
+                        break;
+                }
             }
 
             properties.setProperty("internal.monitor.diskUsage.enabled", "false");
@@ -242,24 +247,26 @@ public abstract class TsdbBenchmark {
 
         @Override
         public void setupTrial(SetSecurityContext setSecurityContext) throws Exception {
-            switch (implementation) {
-                case "sql:mysql":
-                    this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.36"));
-                    break;
-                case "tsl:clickhouse":
-                    this.jdbcContainer = new ClickHouseContainer(DockerImageName.parse("yandex/clickhouse-server").withTag("21.8.10.19")) {
-                        @Override
-                        public String getDatabaseName() {
-                            return "default";
-                        }
-                    };
-                    break;
-                case "tsl:timescale":
-                    this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("2.4.2-pg13")
-                            .asCompatibleSubstituteFor("postgres"))
-                            .withCreateContainerCmdModifier(cmd -> Objects.requireNonNull(cmd.getHostConfig())
-                                    .withShmSize(DataSize.ofGigabytes(1).toBytes()));
-                    break;
+            if (!disableContainers) {
+                switch (implementation) {
+                    case "sql:mysql":
+                        this.jdbcContainer = new MySQLContainer<>(DockerImageName.parse("mysql").withTag("5.7.36"));
+                        break;
+                    case "tsl:clickhouse":
+                        this.jdbcContainer = new ClickHouseContainer(DockerImageName.parse("yandex/clickhouse-server").withTag("21.8.10.19")) {
+                            @Override
+                            public String getDatabaseName() {
+                                return "default";
+                            }
+                        };
+                        break;
+                    case "tsl:timescale":
+                        this.jdbcContainer = new PostgreSQLContainer<>(DockerImageName.parse("timescale/timescaledb").withTag("2.4.2-pg13")
+                                .asCompatibleSubstituteFor("postgres"))
+                                .withCreateContainerCmdModifier(cmd -> Objects.requireNonNull(cmd.getHostConfig())
+                                        .withShmSize(DataSize.ofGigabytes(1).toBytes()));
+                        break;
+                }
             }
 
             if (jdbcContainer != null) {
