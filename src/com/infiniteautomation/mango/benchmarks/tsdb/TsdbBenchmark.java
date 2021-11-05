@@ -151,6 +151,12 @@ public abstract class TsdbBenchmark {
         @Param("false")
         boolean disableContainers;
 
+        @Param("5000") //ms
+        long period;
+
+        @Param("1970-01-01T00:00:00.000Z")
+        String startDate;
+
         PointValueDao pvDao;
         JdbcDatabaseContainer<?> jdbcContainer;
 
@@ -212,6 +218,7 @@ public abstract class TsdbBenchmark {
             }
 
             properties.setProperty("internal.monitor.diskUsage.enabled", "false");
+            properties.setProperty("internal.monitor.enableOperatingSystemInfo", "false");
 
             // disable batch delete size; so it doesn't take forever to delete point values from SQL on lifecycle terminate
             properties.setProperty("db.batchDeleteSize", "-1");

@@ -4,10 +4,9 @@
 
 package com.infiniteautomation.mango.benchmarks.tsdb;
 
-import java.util.ArrayList;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -30,16 +29,15 @@ import org.openjdk.jmh.runner.options.CommandLineOptionException;
 import org.openjdk.jmh.runner.options.CommandLineOptions;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import com.serotonin.m2m2.db.dao.BatchPointValue;
-import com.serotonin.m2m2.db.dao.BatchPointValueImpl;
+import com.infiniteautomation.mango.pointvalue.generator.BrownianPointValueGenerator;
+import com.infiniteautomation.mango.pointvalue.generator.PointValueGenerator;
 import com.serotonin.m2m2.db.dao.PointValueDao.TimeOrder;
-import com.serotonin.m2m2.rt.dataImage.PointValueTime;
 import com.serotonin.m2m2.vo.DataPointVO;
 
 @Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 5, time = 10)
-@Measurement(iterations = 10, time = 10)
+@Warmup(iterations = 0, time = 300)
+@Measurement(iterations = 1, time = 300)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Read extends TsdbBenchmark {
 
@@ -59,49 +57,44 @@ public class Read extends TsdbBenchmark {
         @Param("10000")
         int valuesInsertedPerPoint;
 
-        final long interval = 5000;
-        final long startTimestamp = 0;
-
-        int batchSize;
+        long startTimestamp;
         long endTimestamp;
+
         long readStart;
         long readEnd;
 
-        final Random random = new Random();
         List<DataPointVO> points;
 
         @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
-            this.endTimestamp = startTimestamp + valuesInsertedPerPoint * interval;
-            this.batchSize = mango.batchSize;
+            this.startTimestamp = ZonedDateTime.parse(mango.startDate).toInstant().toEpochMilli();
+            this.endTimestamp = startTimestamp + valuesInsertedPerPoint * mango.period;
             int pointsPerThread = mango.points / mango.threads;
 
+            PointValueGenerator generator = new BrownianPointValueGenerator(startTimestamp, mango.period);
             this.points = mango.createDataPoints(pointsPerThread, Collections.emptyMap());
             for (DataPointVO point : points) {
-                List<BatchPointValue> values = new ArrayList<>(valuesInsertedPerPoint);
-                for (int i = 0; i < valuesInsertedPerPoint; i++) {
-                    values.add(new BatchPointValueImpl(point, new PointValueTime(random.nextDouble(), readStart + i * interval)));
-                }
-                mango.pvDao.savePointValues(values.stream());
+                var stream = generator.apply(point).limit(valuesInsertedPerPoint);
+                mango.pvDao.savePointValues(stream);
             }
             System.out.printf("Saved %d values (for %d points)%n", valuesInsertedPerPoint * pointsPerThread, pointsPerThread);
         }
 
         @Setup(Level.Iteration)
         public void setupIteration() {
-            this.readStart = 0;
-            this.readEnd = 0;
+            this.readStart = startTimestamp;
+            this.readEnd = startTimestamp;
         }
 
         @Setup(Level.Invocation)
-        public void nextRead() {
+        public void nextRead(TsdbMockMango mango) {
             this.readStart = readEnd;
-            this.readEnd = readStart + batchSize * interval;
+            this.readEnd = readStart + mango.batchSize * mango.period;
 
             // loop back to start of data
             if (readEnd > endTimestamp) {
-                this.readStart = 0;
-                this.readEnd = batchSize * interval;
+                this.readStart = startTimestamp;
+                this.readEnd = readStart + mango.batchSize * mango.period;
             }
         }
     }

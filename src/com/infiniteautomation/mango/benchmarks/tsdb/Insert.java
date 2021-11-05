@@ -4,13 +4,12 @@
 
 package com.infiniteautomation.mango.benchmarks.tsdb;
 
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -23,21 +22,20 @@ import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.CommandLineOptionException;
 import org.openjdk.jmh.runner.options.CommandLineOptions;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import com.serotonin.m2m2.db.dao.BatchPointValue;
-import com.serotonin.m2m2.db.dao.BatchPointValueImpl;
-import com.serotonin.m2m2.rt.dataImage.PointValueTime;
-import com.serotonin.m2m2.vo.DataPointVO;
+import com.infiniteautomation.mango.pointvalue.generator.BatchPointValueSupplier;
+import com.infiniteautomation.mango.pointvalue.generator.BrownianPointValueGenerator;
 
 @Fork(value = 1, warmups = 0)
 @BenchmarkMode(Mode.Throughput)
-@Warmup(iterations = 5, time = 10)
-@Measurement(iterations = 10, time = 10)
+@Warmup(iterations = 0, time = 300)
+@Measurement(iterations = 1, time = 300)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Insert extends TsdbBenchmark {
 
@@ -54,56 +52,48 @@ public class Insert extends TsdbBenchmark {
     @State(Scope.Thread)
     public static class InsertParams {
 
-        final long timeIncrement = 5000L;
-        final Random random = new Random();
-
-        List<DataPointVO> points;
-        // we don't reset the index between iterations as this would result in backdates
-        long index;
-        int batchSize;
+        long startTimestamp;
+        long invocationCount;
+        List<BatchPointValueSupplier> suppliers;
 
         @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
-            this.points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
-            this.batchSize = mango.batchSize;
+            this.startTimestamp = ZonedDateTime.parse(mango.startDate).toInstant().toEpochMilli();
+            var points = mango.createDataPoints(mango.points / mango.threads, Collections.emptyMap());
+            var generator = new BrownianPointValueGenerator(startTimestamp, mango.period);
+            this.suppliers = points.stream().map(generator::createSupplier).collect(Collectors.toList());
         }
 
-        public PointValueTime newValue(long timestamp) {
-            return new PointValueTime(random.nextDouble(), timestamp);
-        }
-
-        public Stream<BatchPointValue> generateData(DataPointVO point, long startTime) {
-            return Stream.generate(new Supplier<BatchPointValue>() {
-                int count;
-
-                @Override
-                public BatchPointValue get() {
-                    return new BatchPointValueImpl(point, newValue(startTime + count++ * timeIncrement));
-                }
-            }).limit(batchSize);
+        @TearDown(Level.Invocation)
+        public void tearDownInvocation() {
+            this.invocationCount++;
         }
     }
 
     @Benchmark
     public void insert(TsdbMockMango mango, InsertParams insertParams) {
-        long startTime = insertParams.index * insertParams.timeIncrement * insertParams.batchSize;
-        for (DataPointVO point : insertParams.points) {
-            mango.pvDao.savePointValues(insertParams.generateData(point, startTime));
+        for (var supplier : insertParams.suppliers) {
+            mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize));
         }
-        insertParams.index++;
     }
 
     @Benchmark
     public void withBackdates(TsdbMockMango mango, InsertParams insertParams) {
-        long index = insertParams.index;
-        // every 100 iterations insert some backdated values, this leaves holes and back-fills them without overwriting
-        if (index % 100 == 0) {
-            index -= 100;
+        // every x invocations insert some backdated values, this leaves holes and back-fills them without overwriting
+        int backdateFrequency = 10;
+        boolean backdate = insertParams.invocationCount % backdateFrequency == 0;
+
+        for (var supplier : insertParams.suppliers) {
+            long ts = supplier.getTimestamp();
+            if (backdate) {
+                // rewind timestamp
+                supplier.setTimestamp(ts - backdateFrequency * mango.period * mango.batchSize);
+            }
+            mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize));
+            if (backdate) {
+                // restore timestamp position
+                supplier.setTimestamp(ts + mango.period * mango.batchSize);
+            }
         }
-        long startTime = index * insertParams.timeIncrement * insertParams.batchSize;
-        for (DataPointVO point : insertParams.points) {
-            mango.pvDao.savePointValues(insertParams.generateData(point, startTime));
-        }
-        insertParams.index++;
     }
 }
