@@ -184,7 +184,6 @@ public abstract class TsdbBenchmark {
             properties.setProperty("db.nosql.shardStreamType", shardStreamType);
 
             properties.setProperty("db.nosql.enabled", Boolean.toString(implementation.equals("ias-tsdb")));
-            properties.setProperty("db.tsl.enabled", Boolean.toString(implementation.startsWith("tsl:")));
 
             // run h2 disk database by default, overridden below
             properties.setProperty("db.type", "h2");
@@ -193,28 +192,25 @@ public abstract class TsdbBenchmark {
             var parts = implementation.split(":");
             if (implementation.startsWith("sql:")) {
                 properties.setProperty("db.type", parts[1]);
+                if (jdbcContainer != null) {
+                    properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
+                    properties.setProperty("db.username", jdbcContainer.getUsername());
+                    properties.setProperty("db.password", jdbcContainer.getPassword());
+                }
             } else if (implementation.startsWith("tsl:")) {
-                properties.setProperty("db.tsl.type", parts[1]);
+                String prefix = "db.tsl." + parts[1] + ".";
+                properties.setProperty(prefix + "enabled", Boolean.toString(true));
+                properties.setProperty(prefix + "batchInsert.enable", "false");
                 properties.setProperty("db.tsl.memory.seriesValueLimit", "-1");
-                properties.setProperty("db.tsl.batchInsert.enable", "false");
+                if (jdbcContainer != null) {
+                    properties.setProperty(prefix + "host", jdbcContainer.getHost());
+                    properties.setProperty(prefix + "db", jdbcContainer.getDatabaseName());
+                    properties.setProperty(prefix + "username", jdbcContainer.getUsername());
+                    properties.setProperty(prefix + "password", jdbcContainer.getPassword());
+                    properties.setProperty(prefix + "port", Integer.toString(jdbcContainer.getFirstMappedPort()));
+                }
             } else if (!implementation.equals("ias-tsdb")) {
                 throw new IllegalStateException("Unknown implementation: " + implementation);
-            }
-
-            if (jdbcContainer != null) {
-                switch (implementation) {
-                    case "sql:mysql":
-                        properties.setProperty("db.url", jdbcContainer.getJdbcUrl());
-                        properties.setProperty("db.username", jdbcContainer.getUsername());
-                        properties.setProperty("db.password", jdbcContainer.getPassword());
-                        break;
-                    case "tsl:clickhouse":
-                        setTslProperties("db.tsl.clickhouse.");
-                        break;
-                    case "tsl:timescale":
-                        setTslProperties("db.tsl.timescale.");
-                        break;
-                }
             }
 
             properties.setProperty("internal.monitor.diskUsage.enabled", "false");
@@ -237,14 +233,6 @@ public abstract class TsdbBenchmark {
 
             lifecycle.addBeanDefinition("tsdbMockMango", beanDefinition);
             lifecycle.addRuntimeContextConfiguration(BenchmarkConfig.class);
-        }
-
-        private void setTslProperties(String prefix) {
-            properties.setProperty(prefix + "host", jdbcContainer.getHost());
-            properties.setProperty(prefix + "db", jdbcContainer.getDatabaseName());
-            properties.setProperty(prefix + "username", jdbcContainer.getUsername());
-            properties.setProperty(prefix + "password", jdbcContainer.getPassword());
-            properties.setProperty(prefix + "port", Integer.toString(jdbcContainer.getFirstMappedPort()));
         }
 
         @Setup(Level.Trial)
