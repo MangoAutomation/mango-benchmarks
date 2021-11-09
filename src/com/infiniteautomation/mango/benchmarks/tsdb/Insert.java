@@ -25,8 +25,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.runner.RunnerException;
-import org.openjdk.jmh.runner.options.CommandLineOptionException;
-import org.openjdk.jmh.runner.options.CommandLineOptions;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import com.infiniteautomation.mango.pointvalue.generator.BatchPointValueSupplier;
@@ -38,11 +36,6 @@ import com.infiniteautomation.mango.pointvalue.generator.BrownianPointValueGener
 @Measurement(iterations = 1, time = 300)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Insert extends TsdbBenchmark {
-
-    public static void main(String[] args) throws RunnerException, CommandLineOptionException {
-        CommandLineOptions cmdOptions = new CommandLineOptions(args);
-        new Insert().runBenchmark(cmdOptions);
-    }
 
     @Test
     public void runBenchmark() throws RunnerException {

@@ -25,8 +25,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.RunnerException;
-import org.openjdk.jmh.runner.options.CommandLineOptionException;
-import org.openjdk.jmh.runner.options.CommandLineOptions;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import com.infiniteautomation.mango.pointvalue.generator.BrownianPointValueGenerator;
@@ -40,11 +38,6 @@ import com.serotonin.m2m2.vo.DataPointVO;
 @Measurement(iterations = 1, time = 300)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Read extends TsdbBenchmark {
-
-    public static void main(String[] args) throws RunnerException, CommandLineOptionException {
-        CommandLineOptions cmdOptions = new CommandLineOptions(args);
-        new Read().runBenchmark(cmdOptions);
-    }
 
     @Test
     public void runBenchmark() throws RunnerException {

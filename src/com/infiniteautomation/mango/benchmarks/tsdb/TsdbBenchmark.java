@@ -23,6 +23,8 @@ import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.format.OutputFormat;
 import org.openjdk.jmh.runner.format.OutputFormatFactory;
+import org.openjdk.jmh.runner.options.CommandLineOptionException;
+import org.openjdk.jmh.runner.options.CommandLineOptions;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.VerboseMode;
@@ -44,6 +46,12 @@ import com.serotonin.m2m2.db.dao.PointValueDao;
 import com.serotonin.m2m2.db.dao.SystemSettingsDao;
 
 public abstract class TsdbBenchmark {
+
+    public static void main(String[] args) throws RunnerException, CommandLineOptionException {
+        CommandLineOptions cmdOptions = new CommandLineOptions(args);
+        runBenchmark(cmdOptions);
+    }
+
     public static final String THREADS_PARAM = "threads";
     public static final String POINTS_PARAM = "points";
     public static final String BATCH_SIZE_PARAM = "batchSize";
@@ -56,7 +64,7 @@ public abstract class TsdbBenchmark {
      * We cannot parameterize the Threads and OperationsPerInvocation annotations, so we must do it ourselves
      * programmatically, combine the results, then output them to stdout
      */
-    public void runBenchmark(Options options) throws RunnerException {
+    public static void runBenchmark(Options options) throws RunnerException {
         List<RunResult> results = new ArrayList<>();
 
         int[] threadsParams = options.getParameter(THREADS_PARAM)
@@ -84,10 +92,6 @@ public abstract class TsdbBenchmark {
                             .param(THREADS_PARAM, Integer.toString(threads))
                             .param(POINTS_PARAM, Integer.toString(points))
                             .param(BATCH_SIZE_PARAM, Integer.toString(batchSize));
-
-                    if (options.getIncludes().isEmpty()) {
-                        builder.include(getClass().getName());
-                    }
 
                     var opts = builder.build();
                     results.addAll(new Runner(opts).run());
