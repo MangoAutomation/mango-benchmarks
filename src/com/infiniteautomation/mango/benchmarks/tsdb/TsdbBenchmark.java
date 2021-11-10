@@ -161,6 +161,9 @@ public abstract class TsdbBenchmark {
         @Param("1970-01-01T00:00:00.000Z")
         String startDate;
 
+        @Param({"ERROR"})
+        String conflictMode;
+
         PointValueDao pvDao;
         JdbcDatabaseContainer<?> jdbcContainer;
 
@@ -206,6 +209,7 @@ public abstract class TsdbBenchmark {
                 properties.setProperty(prefix + "enabled", Boolean.toString(true));
                 properties.setProperty(prefix + "batchInsert.enable", "false");
                 properties.setProperty("db.tsl.memory.seriesValueLimit", "-1");
+                properties.setProperty(prefix + "conflictMode", conflictMode);
                 if (jdbcContainer != null) {
                     properties.setProperty(prefix + "host", jdbcContainer.getHost());
                     properties.setProperty(prefix + "db", jdbcContainer.getDatabaseName());

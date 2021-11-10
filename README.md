@@ -40,6 +40,7 @@ implementation | sql:h2, sql:mysql, ias-tsdb, tsl:memory, tsl:quest, tsl:timesca
 batchSize | 1000 | number > 0 | Number of point values to read per point, per iteration
 maxOpenFiles | 2X | number > 0 | IasTsdb max open files setting, use "X" suffix to multiply by number of points
 shardStreamType | MAPPED_BYTE_BUFFER | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER | IasTsdb shardStreamType setting
+conflictMode | UPDATE | ERROR, UPDATE, DO_NOTHING | TSL strategy for handling unique constraint conflicts when inserting
 
 ### Insert benchmark
 
