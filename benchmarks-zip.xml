@@ -9,14 +9,16 @@
     <includeBaseDirectory>false</includeBaseDirectory>
     <dependencySets>
         <dependencySet>
+            <outputDirectory>mango-benchmarks</outputDirectory>
             <useProjectArtifact>true</useProjectArtifact>
             <useTransitiveDependencies>false</useTransitiveDependencies>
+            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
             <includes>
                 <include>com.infiniteautomation.mango:mango-benchmarks:jar</include>
             </includes>
         </dependencySet>
         <dependencySet>
-            <outputDirectory>lib</outputDirectory>
+            <outputDirectory>mango-benchmarks/lib</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
             <useTransitiveDependencies>true</useTransitiveDependencies>
         </dependencySet>

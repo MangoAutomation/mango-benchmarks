@@ -2,19 +2,15 @@
 This module can be used to run benchmarks for Mango.
 
 ## Build and prepare for running
-`mvn package dependency:copy-dependencies`
+1. `mvn clean package`
+2. Copy `maven-target/mango-benchmarks.zip` to your target machine
+3. `unzip mango-benchmarks.zip`
+4. `cd mango-benchmarks`
 
 ## Run a benchmark
-Windows
 
 ```shell
-java -cp "maven-target\mango-benchmarks-4.3.0-SNAPSHOT.jar;maven-target\dependency\*" com.infiniteautomation.mango.benchmarks.tsdb.Insert
-```
-
-Linux
-
-```shell
-java -cp "maven-target/mango-benchmarks-4.3.0-SNAPSHOT.jar:maven-target/dependency/*" com.infiniteautomation.mango.benchmarks.tsdb.Insert
+java -jar mango-benchmarks.jar 'Insert.insert'
 ```
 
 ## Setting parameters and benchmark options
@@ -24,7 +20,7 @@ You can set multiple options for each parameter and every combination will be be
 Example:
 
 ```shell
-java -cp <cp> com.infiniteautomation.mango.benchmarks.tsdb.Insert -p threads=1C -p points=100,1000
+java -jar mango-benchmarks.jar 'Insert.insert' -p threads=1C -p points=100,1000
 ```
 
 ## Benchmarks and their parameters

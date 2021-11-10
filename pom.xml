@@ -61,7 +61,7 @@
                             <descriptors>
                                 <descriptor>benchmarks-zip.xml</descriptor>
                             </descriptors>
-                            <finalName>mango-benchmarks-${project.version}</finalName>
+                            <finalName>mango-benchmarks</finalName>
                             <appendAssemblyId>false</appendAssemblyId>
                         </configuration>
                     </execution>
