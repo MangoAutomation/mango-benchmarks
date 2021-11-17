@@ -66,7 +66,7 @@ public class Insert extends TsdbBenchmark {
     @Benchmark
     public void insert(TsdbMockMango mango, InsertParams insertParams) {
         for (var supplier : insertParams.suppliers) {
-            mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize));
+            mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize), mango.batchSize);
         }
     }
 
@@ -82,7 +82,7 @@ public class Insert extends TsdbBenchmark {
                 // rewind timestamp
                 supplier.setTimestamp(ts - backdateFrequency * mango.period * mango.batchSize);
             }
-            mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize));
+            mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize), mango.batchSize);
             if (backdate) {
                 // restore timestamp position
                 supplier.setTimestamp(ts + mango.period * mango.batchSize);
