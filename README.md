@@ -25,10 +25,19 @@ java -jar mango-benchmarks.jar 'Insert.insert' -p threads=1C -p points=100,1000
 
 ## Benchmarks and their parameters
 
-### Read benchmark
+### Read benchmarks
 
-* Class: `com.infiniteautomation.mango.benchmarks.tsdb.Read`
+* Each operation will read values for (total points / threads) points
 * Result: op/s represents the total point values read per second, across all points and threads.
+
+| Test name                     | Description                                                                                                                             |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| Read.forwardReadCombined      | Reads values for the points, all together, in ascending time order                                                                      |
+| Read.forwardReadPerPoint      | Reads values for the points, one point at a time, in ascending time order                                                               |
+| Read.reverseReadCombined      | Reads values for the points, all together, in descending time order                                                                     |
+| Read.reverseReadPerPoint      | Reads values for the points, one point at a time, in descending time order                                                              |
+| Read.wideBookendQueryCombined | Reads values for the points, all together, in ascending time order, also reads value immediately prior to the queried time range        |
+| Read.wideBookendQueryPerPoint | Reads values for the points, one point at a time, in ascending time order, also reads value immediately prior to the queried time range |
 
 #### Parameters
 
@@ -40,15 +49,20 @@ java -jar mango-benchmarks.jar 'Insert.insert' -p threads=1C -p points=100,1000
 | implementation         | sql:h2, sql:mysql, ias-tsdb, tsl:memory, tsl:quest, tsl:timescale, tsl:clickhouse | sql:h2, sql:mysql, ias-tsdb, tsl:memory, tsl:quest, tsl:timescale, tsl:clickhouse | PointValueDao implementation                                                                          |
 | batchSize              | 1000                                                                              | number > 0                                                                        | Number of point values to read per point, per iteration                                               |
 | period                 | 5000                                                                              | number > 0                                                                        | Period between point values (milliseconds)                                                            |
-| startDate              | 1970-01-01T00:00:00.000Z                                                          | ISO 8601                                                                          | Date to start generating data from                                                                    |                                                                                   |                                                                                   |                                                                                                       |
+| startDate              | 1970-01-01T00:00:00.000Z                                                          | ISO 8601                                                                          | Date to start generating data from, then for reading from                                             |                                                                                   |                                                                                   |                                                                                                       |
 | conflictMode           | UPDATE                                                                            | ERROR, UPDATE, DO_NOTHING                                                         | TSL strategy for handling unique constraint conflicts when inserting                                  |
 | maxOpenFiles           | 2X                                                                                | number > 0                                                                        | IasTsdb max open files setting, use "X" suffix to multiply by number of points                        |
 | shardStreamType        | MAPPED_BYTE_BUFFER                                                                | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER                | IasTsdb shardStreamType setting                                                                       |
 
-### Insert benchmark
+### Insert benchmarks
 
-* Class: `com.infiniteautomation.mango.benchmarks.tsdb.Insert`
+* Each operation will insert values for (total points / threads) points
 * Result: op/s represents the total point values inserted per second, across all points and threads.
+
+| Test name            | Description                                                                                  |
+|----------------------|----------------------------------------------------------------------------------------------|
+| Insert.insert        | Inserts values in ascending time order for each point                                        |
+| Insert.withBackdates | Inserts values in ascending time order for each point, periodically inserts backdated values |
 
 #### Parameters
 
@@ -63,4 +77,3 @@ java -jar mango-benchmarks.jar 'Insert.insert' -p threads=1C -p points=100,1000
 | conflictMode           | UPDATE                                                                            | ERROR, UPDATE, DO_NOTHING                                                         | TSL strategy for handling unique constraint conflicts when inserting                                  |
 | maxOpenFiles           | 2X                                                                                | number > 0                                                                        | IasTsdb max open files setting, use "X" suffix to multiply by number of points                        |
 | shardStreamType        | MAPPED_BYTE_BUFFER                                                                | INPUT_STREAM, FILE_CHANNEL, RANDOM_ACCESS_FILE, MAPPED_BYTE_BUFFER                | IasTsdb shardStreamType setting                                                                       |
-
