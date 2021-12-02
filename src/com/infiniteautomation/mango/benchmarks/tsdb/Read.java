@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -24,8 +23,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
-import org.openjdk.jmh.runner.RunnerException;
-import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import com.infiniteautomation.mango.pointvalue.generator.BrownianPointValueGenerator;
 import com.infiniteautomation.mango.pointvalue.generator.PointValueGenerator;
@@ -38,11 +35,6 @@ import com.serotonin.m2m2.vo.DataPointVO;
 @Measurement(iterations = 1, time = 300)
 @OutputTimeUnit(TimeUnit.SECONDS)
 public class Read extends TsdbBenchmark {
-
-    @Test
-    public void runBenchmark() throws RunnerException {
-        runBenchmark(new OptionsBuilder().build());
-    }
 
     @State(Scope.Thread)
     public static class ReadState {
