@@ -56,7 +56,7 @@ public abstract class TsdbBenchmark {
     public static final String POINTS_PARAM = "points";
     public static final String BATCH_SIZE_PARAM = "batchSize";
     public static final Collection<String> DEFAULT_THREADS = Collections.singletonList("1C");
-    public static final Collection<String> DEFAULT_POINTS = Collections.singletonList("1000");
+    public static final Collection<String> DEFAULT_POINTS = Collections.singletonList("10");
     public static final Collection<String> DEFAULT_BATCH_SIZE = Collections.singletonList("1000");
     public final static int NUM_CPU_CORES = Runtime.getRuntime().availableProcessors();
 
@@ -88,7 +88,7 @@ public abstract class TsdbBenchmark {
                     var builder = new OptionsBuilder()
                             .parent(options)
                             .threads(threads)
-                            .operationsPerInvocation((points / threads) * batchSize)
+                            .operationsPerInvocation(points * batchSize)
                             .param(THREADS_PARAM, Integer.toString(threads))
                             .param(POINTS_PARAM, Integer.toString(points))
                             .param(BATCH_SIZE_PARAM, Integer.toString(batchSize));
@@ -131,12 +131,19 @@ public abstract class TsdbBenchmark {
         int threads;
 
         /**
-         * Number of points to insert/read values for, the points are split between the threads.
-         * So if you set points to 1000 and threads to 10, then each thread will operate on a set of 100 points.
+         * Number of points to insert/read values for at once in a single operation.
          * This default is overridden via {@link TsdbBenchmark#DEFAULT_POINTS}.
          */
-        @Param({"1"})
+        @Param({"10"})
         int points;
+
+        /**
+         * Total number of data points in the Mango system, the points are split between the threads.
+         * So if you set totalPoints to 1000 and threads to 10, then each thread will operate on a set of 100 points.
+         * Must be greater or equal to (points * threads).
+         */
+        @Param({"1000"})
+        int totalPoints;
 
         /**
          * Number of point values which are inserted/read per point.
@@ -186,7 +193,7 @@ public abstract class TsdbBenchmark {
 
         @Override
         protected void preInitialize() {
-            int maxOpenFiles = parseMultiplier(this.maxOpenFiles, "X", points);
+            int maxOpenFiles = parseMultiplier(this.maxOpenFiles, "X", totalPoints);
             properties.setProperty("db.nosql.maxOpenFiles", Integer.toString(maxOpenFiles));
             properties.setProperty("db.nosql.shardStreamType", shardStreamType);
 
@@ -246,6 +253,14 @@ public abstract class TsdbBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             this.pvDao = Common.getBean(PointValueDao.class);
+
+            if (totalPoints % threads != 0) {
+                System.err.printf("WARN: Total points (%d) is not evenly divisible by number of threads (%d), only %d points will be created.%n", totalPoints, threads, (totalPoints / threads) * threads);
+            }
+            int pointsPerThread = totalPoints / threads;
+            if (pointsPerThread % points != 0) {
+                System.err.printf("WARN: Points per thread (%d) is not evenly divisible by points per operation (%d).%n", pointsPerThread, points);
+            }
         }
 
         @Override

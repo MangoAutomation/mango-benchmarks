@@ -48,39 +48,59 @@ public class Read extends TsdbBenchmark {
         long readStart;
         long readEnd;
 
+        /**
+         * all points for this thread
+         */
+        List<DataPointVO> allPoints;
+        int index = 0;
+        /**
+         *  points read within a single invocation
+         */
         List<DataPointVO> points;
 
         @Setup(Level.Trial)
         public void setup(TsdbMockMango mango) throws ExecutionException, InterruptedException {
+            long start = System.nanoTime();
             this.startTimestamp = ZonedDateTime.parse(mango.startDate).toInstant().toEpochMilli();
             this.endTimestamp = startTimestamp + valuesInsertedPerPoint * mango.period;
-            int pointsPerThread = mango.points / mango.threads;
+            int pointsPerThread = mango.totalPoints / mango.threads;
 
             PointValueGenerator generator = new BrownianPointValueGenerator(startTimestamp, mango.period);
-            this.points = mango.createDataPoints(pointsPerThread, Collections.emptyMap());
-            for (DataPointVO point : points) {
+            this.allPoints = mango.createDataPoints(pointsPerThread, Collections.emptyMap());
+            for (DataPointVO point : allPoints) {
                 var stream = generator.apply(point).limit(valuesInsertedPerPoint);
                 mango.pvDao.savePointValues(stream);
             }
-            System.out.printf("Saved %d values (for %d points)%n", valuesInsertedPerPoint * pointsPerThread, pointsPerThread);
+            long duration = System.nanoTime() - start;
+            System.out.printf("Thread '%s' inserted %d values (for %d points, %d values per point) in %.2f seconds.%n",
+                    Thread.currentThread().getName(), valuesInsertedPerPoint * pointsPerThread, pointsPerThread, valuesInsertedPerPoint, TimeUnit.NANOSECONDS.toMillis(duration) / 1000.0);
         }
 
         @Setup(Level.Iteration)
-        public void setupIteration() {
+        public void setupIteration(TsdbMockMango mango) {
             this.readStart = startTimestamp;
-            this.readEnd = startTimestamp;
+            this.readEnd = readStart + mango.batchSize * mango.period;
         }
 
         @Setup(Level.Invocation)
         public void nextRead(TsdbMockMango mango) {
-            this.readStart = readEnd;
-            this.readEnd = readStart + mango.batchSize * mango.period;
+            int endIndex = index + mango.points;
+            if (endIndex > allPoints.size()) {
+                this.index = 0;
+                endIndex = mango.points;
 
-            // loop back to start of data
-            if (readEnd > endTimestamp) {
-                this.readStart = startTimestamp;
+                // move to next time range
+                this.readStart = readEnd;
                 this.readEnd = readStart + mango.batchSize * mango.period;
+
+                // loop back to start of data
+                if (readEnd > endTimestamp) {
+                    this.readStart = startTimestamp;
+                    this.readEnd = readStart + mango.batchSize * mango.period;
+                }
             }
+            this.points = allPoints.subList(index, endIndex);
+            this.index = endIndex;
         }
     }
 
