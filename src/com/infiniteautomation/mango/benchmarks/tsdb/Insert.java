@@ -4,7 +4,9 @@
 
 package com.infiniteautomation.mango.benchmarks.tsdb;
 
+import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -89,16 +91,16 @@ public class Insert extends TsdbBenchmark {
 
         for (int i = 0; i < mango.points; i++) {
             var supplier = insertParams.next();
-            long ts = supplier.getTimestamp();
-            if (ts % backdatePeriod == startOffset) {
+            Instant ts = supplier.getTimestamp();
+            if (ts.toEpochMilli() % backdatePeriod == startOffset) {
                 // rewind timestamp
-                supplier.setTimestamp(ts - backdatePeriod);
+                supplier.setTimestamp(ts.minus(backdatePeriod, ChronoUnit.MILLIS));
             }
 
             mango.pvDao.savePointValues(supplier.stream().limit(mango.batchSize), mango.batchSize);
 
             // restore timestamp position
-            supplier.setTimestamp(ts + batchPeriod);
+            supplier.setTimestamp(ts.plus(batchPeriod, ChronoUnit.MILLIS));
         }
     }
 }
