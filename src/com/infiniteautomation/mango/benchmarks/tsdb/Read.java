@@ -26,7 +26,7 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import com.infiniteautomation.mango.pointvalue.generator.BrownianPointValueGenerator;
 import com.infiniteautomation.mango.pointvalue.generator.PointValueGenerator;
-import com.serotonin.m2m2.db.dao.PointValueDao.TimeOrder;
+import com.serotonin.m2m2.db.dao.pointvalue.TimeOrder;
 import com.serotonin.m2m2.vo.DataPointVO;
 
 @Fork(value = 1, warmups = 0)
