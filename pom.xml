@@ -10,11 +10,11 @@
     <parent>
         <artifactId>mango-parent</artifactId>
         <groupId>com.infiniteautomation.mango</groupId>
-        <version>4.5.0</version>
+        <version>4.5.0-SNAPSHOT</version>
         <relativePath>../ma-core-public/pom.xml</relativePath>
     </parent>
     <artifactId>mango-benchmarks</artifactId>
-    <version>4.5.0</version>
+    <version>4.5.0-SNAPSHOT</version>
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -73,22 +73,22 @@
         <dependency>
             <groupId>com.infiniteautomation</groupId>
             <artifactId>mango</artifactId>
-            <version>4.5.0</version>
+            <version>4.5.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.infiniteautomation.mango</groupId>
             <artifactId>mango-nosql-database</artifactId>
-            <version>4.5.0</version>
+            <version>4.5.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.infiniteautomation.mango</groupId>
             <artifactId>radix-tsl</artifactId>
-            <version>4.5.0</version>
+            <version>4.5.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.infiniteautomation</groupId>
             <artifactId>mango</artifactId>
-            <version>4.5.0</version>
+            <version>4.5.0-SNAPSHOT</version>
             <type>test-jar</type>
         </dependency>
         <dependency>
