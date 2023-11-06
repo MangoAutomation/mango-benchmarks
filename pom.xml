@@ -78,7 +78,7 @@
         <dependency>
             <groupId>com.infiniteautomation.mango</groupId>
             <artifactId>mango-nosql-database</artifactId>
-            <version>4.5.3-SNAPSHOT</version>
+            <version>4.5.4-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.infiniteautomation.mango</groupId>
