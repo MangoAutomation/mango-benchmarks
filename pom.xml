@@ -10,7 +10,7 @@
     <parent>
         <artifactId>mango-parent</artifactId>
         <groupId>com.infiniteautomation.mango</groupId>
-        <version>4.5.2-SNAPSHOT</version>
+        <version>4.5.3</version>
         <relativePath>../ma-core-public/pom.xml</relativePath>
     </parent>
     <artifactId>mango-benchmarks</artifactId>
@@ -73,7 +73,7 @@
         <dependency>
             <groupId>com.infiniteautomation</groupId>
             <artifactId>mango</artifactId>
-            <version>4.5.2-SNAPSHOT</version>
+            <version>4.5.3</version>
         </dependency>
         <dependency>
             <groupId>com.infiniteautomation.mango</groupId>
@@ -88,7 +88,7 @@
         <dependency>
             <groupId>com.infiniteautomation</groupId>
             <artifactId>mango</artifactId>
-            <version>4.5.2-SNAPSHOT</version>
+            <version>4.5.3</version>
             <type>test-jar</type>
         </dependency>
         <dependency>
